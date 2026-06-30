@@ -14,18 +14,26 @@ export default function LoginPage() {
     email: "",
     password: "",
   });
+  const [loginError, setLoginError] = useState("");
 
   const loginMutation = useMutation({
     mutationFn: async (payload) => {
+      localStorage.removeItem("token");
+      localStorage.removeItem("userRole");
+      localStorage.removeItem("userName");
+
       const response = await api.post("/auth/login", payload);
       return response.data;
     },
     onSuccess: (data) => {
       if (!data?.token || !data?.user?.role) {
-        toast.error("Login response was incomplete. Please try again.");
+        const message = "Login response was incomplete. Please try again.";
+        setLoginError(message);
+        toast.error(message);
         return;
       }
 
+      setLoginError("");
       localStorage.setItem("token", data.token);
       localStorage.setItem("userRole", data.user.role);
       localStorage.setItem("userName", data.user.name || "");
@@ -33,19 +41,25 @@ export default function LoginPage() {
       router.push("/dashboard");
     },
     onError: (error) => {
-      toast.error(
+      const message =
         error.response?.data?.error ||
-          "We could not sign you in. Please check your details and try again.",
-      );
+        error.response?.data?.message ||
+        "We could not sign you in. Please check your details and try again.";
+
+      setLoginError(message);
+      toast.error(message);
     },
   });
 
   const handleSubmit = (event) => {
     event.preventDefault();
     if (!formData.email || !formData.password) {
-      toast.error("Please enter your email and password.");
+      const message = "Please enter your email and password.";
+      setLoginError(message);
+      toast.error(message);
       return;
     }
+    setLoginError("");
     loginMutation.mutate(formData);
   };
 
@@ -102,6 +116,12 @@ export default function LoginPage() {
               />
             </div>
           </div>
+
+          {loginError && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+              {loginError}
+            </div>
+          )}
 
           <button
             type="submit"

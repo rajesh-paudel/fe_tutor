@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+
 import {
   Clock,
   Check,
@@ -251,7 +250,6 @@ export default function TeacherDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-gray-100">
-      <Navbar />
       <main className="mx-auto max-w-7xl space-y-8 px-4 py-10 sm:px-6 lg:px-8">
         <div className="border-b border-gray-800 pb-6">
           <div className="flex flex-wrap items-center gap-2 text-sm text-emerald-400">
@@ -546,7 +544,6 @@ export default function TeacherDashboard() {
           </div>
         </div>
       </main>
-      <Footer />
     </div>
   );
 }

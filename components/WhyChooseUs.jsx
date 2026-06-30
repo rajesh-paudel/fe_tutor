@@ -1,4 +1,3 @@
-import Image from "next/image";
 import {
   ShieldCheck,
   BrainCircuit,
@@ -11,119 +10,144 @@ import {
 const features = [
   {
     icon: ShieldCheck,
-    title: "Verified & Trusted Tutors",
+    title: "Verified tutor profiles",
     description:
-      "Every tutor builds a professional profile showcasing qualifications, teaching experience, subjects, and verified student reviews so learners can make confident decisions.",
+      "Every tutor lists real qualifications, teaching experience, and reviews from students who actually booked a session, not a star rating with no history behind it.",
   },
   {
     icon: BrainCircuit,
-    title: "AI Smart Recommendations",
+    title: "Matching, not searching",
     description:
-      "Instead of displaying random tutor listings, our recommendation engine analyzes multiple factors to suggest tutors that best match your learning style and academic goals.",
+      "Tell us your subject, level, and schedule, and we surface tutors who fit, instead of handing you a list of 500 profiles to filter through yourself.",
   },
   {
     icon: Star,
-    title: "Quality Based Ranking",
+    title: "Rankings tutors earn",
     description:
-      "Tutor rankings are influenced by teaching quality, review scores, student retention, lesson completion, responsiveness, and overall learning satisfaction.",
+      "A tutor's position is shaped by lesson completion, response time, and how often past students rebook them, so good teaching is what actually rises to the top.",
   },
   {
     icon: CalendarClock,
-    title: "Flexible Scheduling",
+    title: "Scheduling without the back-and-forth",
     description:
-      "Book one-time sessions or recurring classes based on your availability without the hassle of endless messaging.",
+      "See a tutor's real availability and book directly. No waiting two days for a reply just to find out they're full this week.",
   },
   {
     icon: BookOpen,
-    title: "Everything in One Dashboard",
+    title: "One dashboard for everything",
     description:
-      "Assignments, bookings, notes, study resources, upcoming lessons, and AI assistance are all available in one organized workspace.",
+      "Bookings, lesson notes, study materials, and your AI assistant live in one place, so you're not piecing your learning together across five apps.",
   },
   {
     icon: TrendingUp,
-    title: "Continuous Learning",
+    title: "Progress you can actually see",
     description:
-      "Track your progress, revisit previous lessons, and receive personalized recommendations as your learning journey evolves.",
+      "Revisit past lessons and track what you've covered, so prepping for the next exam starts from where you left off, not from zero.",
   },
+];
+
+const matchFactors = [
+  { label: "Subject expertise", value: 92 },
+  { label: "Verified reviews", value: 88 },
+  { label: "Response time", value: 81 },
+  { label: "Schedule fit", value: 95 },
 ];
 
 export default function WhyChoose() {
   return (
-    <section className="bg-[#0d111d] py-24">
+    <section className="bg-white py-24">
       <div className="mx-auto max-w-7xl px-6">
         {/* Heading */}
-
-        <div className="max-w-3xl">
-          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-400">
-            Why Choose TutorHub
+        <div className="max-w-3xl flex flex-col items-center justify-center mx-auto">
+          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700">
+            Why EduSphere
           </span>
 
-          <h2 className="mt-6 text-4xl font-bold text-white md:text-5xl">
-            Learning Designed Around Students,
-            <span className="block text-emerald-400">
-              Powered by Intelligent Technology.
+          <h2 className="mt-6 text-4xl font-bold tracking-tight text-slate-900 md:text-5xl">
+            Built around how students
+            <span className="block text-emerald-600">
+              actually choose a tutor.
             </span>
           </h2>
 
-          <p className="mt-8 text-lg leading-8 text-gray-400">
-            Finding the right tutor shouldn't depend on luck or scrolling
-            through hundreds of social media posts. TutorHub combines modern
-            technology with quality education to create an intelligent learning
-            experience. Every recommendation is backed by verified reviews,
-            performance metrics, teaching expertise, and AI-powered matching,
-            helping students spend less time searching and more time learning.
+          <p className="mt-8 text-lg leading-8 text-slate-600">
+            Most tutoring sites are just a directory: scroll, guess, hope it
+            works out. EduSphere replaces the guessing with evidence. Every
+            match is backed by verified reviews, real performance history, and a
+            fit check against what you're actually trying to learn.
           </p>
         </div>
 
-        {/* Image + Story */}
-
+        {/* Signature: how a match is scored */}
         <div className="mt-20 grid items-center gap-16 lg:grid-cols-2">
-          <div className="relative overflow-hidden rounded-3xl border border-gray-800">
-            <Image
-              src="/images/students.jpg"
-              alt="Students studying"
-              width={700}
-              height={700}
-              className="h-full w-full object-cover"
-            />
-
-            <div className="absolute inset-0 bg-gradient-to-t from-[#090d16] via-transparent to-transparent" />
-          </div>
-
           <div>
-            <h3 className="text-3xl font-bold text-white">
-              Education Should Be Personalized.
+            <h3 className="text-3xl font-bold tracking-tight text-slate-900">
+              How we decide who to show you.
             </h3>
 
-            <p className="mt-6 leading-8 text-gray-400">
-              Every student learns differently. Some require detailed
-              explanations and long-term mentorship, while others simply need a
-              few sessions before an important examination. TutorHub recognizes
-              these differences by helping students discover educators who match
-              their individual learning preferences instead of simply listing
-              every available tutor.
+            <p className="mt-6 leading-8 text-slate-600">
+              When you search for a tutor, we're not sorting by who paid for
+              placement. Every active tutor gets scored against your request on
+              a handful of concrete signals, and the ones who score highest show
+              up first.
             </p>
 
-            <p className="mt-6 leading-8 text-gray-400">
-              Our recommendation engine considers multiple indicators including
-              teaching experience, verified student feedback, lesson completion
-              rates, response time, subject expertise, and overall tutor
-              performance. This creates a smarter matching experience that
-              increases student satisfaction and learning outcomes.
+            <p className="mt-6 leading-8 text-slate-600">
+              That score updates as tutors teach more lessons and collect more
+              reviews, so a tutor who's slipping in responsiveness or completion
+              rate drops, and one who's earning strong feedback moves up.
+              Nobody's position is permanent.
             </p>
 
-            <p className="mt-6 leading-8 text-gray-400">
-              Whether you're preparing for university examinations, improving
-              programming skills, mastering mathematics, or learning a new
-              language, TutorHub provides an organized environment where
-              education becomes easier, more accessible, and more enjoyable for
-              both students and teachers.
+            <p className="mt-6 leading-8 text-slate-600">
+              It's the same logic whether you're cramming for SEE next month or
+              looking for a long-term mentor through your Bachelor's degree.
+            </p>
+          </div>
+
+          {/* Score card */}
+          <div className="rounded-3xl border border-slate-200 bg-slate-50/60 p-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-400">
+                  Example match
+                </p>
+                <p className="mt-1 text-lg font-semibold text-slate-900">
+                  Physics tutor · +2 entrance prep
+                </p>
+              </div>
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-lg font-bold text-white">
+                94
+              </div>
+            </div>
+
+            <div className="mt-8 space-y-5">
+              {matchFactors.map((factor) => (
+                <div key={factor.label}>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium text-slate-700">
+                      {factor.label}
+                    </span>
+                    <span className="text-slate-500">{factor.value}%</span>
+                  </div>
+                  <div className="mt-2 h-2 w-full rounded-full bg-slate-200">
+                    <div
+                      className="h-2 rounded-full bg-emerald-500"
+                      style={{ width: `${factor.value}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <p className="mt-7 border-t border-slate-200 pt-5 text-sm leading-6 text-slate-500">
+              Scores are calculated per search, based on your subject, level,
+              and availability against each tutor's actual track record.
             </p>
           </div>
         </div>
 
         {/* Features */}
-
         <div className="mt-24 grid gap-8 md:grid-cols-2 xl:grid-cols-3">
           {features.map((feature) => {
             const Icon = feature.icon;
@@ -131,17 +155,17 @@ export default function WhyChoose() {
             return (
               <div
                 key={feature.title}
-                className="rounded-2xl border border-gray-800 bg-[#111827]/60 p-8 transition duration-300 hover:-translate-y-2 hover:border-emerald-500/40"
+                className="rounded-2xl border border-slate-200 bg-white p-8 transition duration-300 hover:-translate-y-1 hover:border-emerald-300 hover:shadow-md"
               >
-                <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
+                <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
                   <Icon size={28} />
                 </div>
 
-                <h3 className="text-xl font-semibold text-white">
+                <h3 className="text-xl font-semibold text-slate-900">
                   {feature.title}
                 </h3>
 
-                <p className="mt-4 leading-7 text-gray-400">
+                <p className="mt-4 leading-7 text-slate-600">
                   {feature.description}
                 </p>
               </div>

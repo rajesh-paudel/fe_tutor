@@ -1,5 +1,3 @@
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import {
   BookOpen,
   Sparkles,
@@ -48,8 +46,6 @@ const values = [
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <Navbar />
-
       <main className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         {/* Intro */}
         <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-slate-50/60 p-8 sm:p-12">
@@ -159,8 +155,6 @@ export default function AboutPage() {
           </p>
         </section>
       </main>
-
-      <Footer />
     </div>
   );
 }

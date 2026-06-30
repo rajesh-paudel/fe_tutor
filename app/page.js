@@ -12,12 +12,12 @@ import {
   BookOpen,
 } from "lucide-react";
 import Hero from "@/components/Hero";
-import WhyChoose from "@/components/WhyChooseUs";
-import AISection from "@/components/AISection";
-import SmartRanking from "@/components/SmartRanking";
-import Subjects from "@/components/Subjects";
+
 import HowItWorks from "@/components/HowItWork";
-import TrustSection from "@/components/TrustSection";
+
+import BrowseByGoal from "@/components/BrowseByGoal";
+import Testimonials from "@/components/Testimonials";
+import FinalCta from "@/components/Finalcta";
 
 const highlights = [
   {
@@ -42,16 +42,12 @@ const highlights = [
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-[#090d16] flex flex-col justify-between">
-      <Navbar />
+    <div className="min-h-screen flex flex-col justify-between">
       <Hero />
-      <WhyChoose />
-      <AISection />
-      <SmartRanking />
-      <Subjects />
       <HowItWorks />
-      <TrustSection />
-      <Footer />
+      <BrowseByGoal />
+      <Testimonials />
+      <FinalCta />
     </div>
   );
 }

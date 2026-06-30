@@ -25,7 +25,6 @@ export default function BookingsPage() {
 
   return (
     <div className="min-h-screen bg-[#090d16] text-gray-100">
-      <Navbar />
       <main className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <section className="rounded-3xl border border-gray-800 bg-gradient-to-br from-gray-900/80 to-gray-950/90 p-8 sm:p-10">
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[11px] font-mono uppercase tracking-[0.25em] text-emerald-400">
@@ -66,7 +65,6 @@ export default function BookingsPage() {
           </div>
         </section>
       </main>
-      <Footer />
     </div>
   );
 }

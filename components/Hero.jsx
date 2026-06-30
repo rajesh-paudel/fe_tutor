@@ -60,18 +60,18 @@ export default function Hero() {
 
             <div className="mt-10 flex flex-wrap items-center gap-4">
               <Link
-                href="/register"
+                href="/tutors"
                 className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-7 py-3.5 text-base font-semibold text-white shadow-sm transition hover:bg-emerald-700"
               >
-                Find your tutor
+                Browse tutor
                 <ArrowRight size={18} />
               </Link>
 
               <Link
-                href="/tutors"
+                href="/bookings"
                 className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-7 py-3.5 text-base font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
               >
-                Browse tutors
+                View Bookings
               </Link>
             </div>
 
