@@ -104,7 +104,7 @@ export default function Navbar() {
                   {role === "student" && (
                     <Link
                       href="/ai-study"
-                      className="flex items-center gap-1 text-slate-600 hover:text-slate-950"
+                      className={`flex items-center gap-1 transition-colors ${pathname === "/ai-study" ? "text-emerald-700 font-medium" : "text-slate-600 hover:text-slate-950"}`}
                     >
                       <Sparkles className="h-4 w-4 text-emerald-600" /> AI Study
                     </Link>

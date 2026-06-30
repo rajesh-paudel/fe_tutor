@@ -4,7 +4,14 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 
-import { Search, Star, ArrowRight, SlidersHorizontal, X } from "lucide-react";
+import {
+  Search,
+  Star,
+  ArrowRight,
+  SlidersHorizontal,
+  X,
+  GraduationCap,
+} from "lucide-react";
 
 const SUBJECTS = [
   "Mathematics",
@@ -153,7 +160,7 @@ export default function TutorsPage() {
 
             {tutorsQuery.isError && (
               <div className="mt-6 rounded-2xl border border-red-100 bg-red-50 p-6 text-sm text-red-700">
-                Couldn't load tutors right now. Please try refreshing the page.
+                Could not load tutors right now. Please try refreshing the page.
               </div>
             )}
 
@@ -386,6 +393,11 @@ function TutorCard({ tutor }) {
             experience
           </div>
 
+          <span className="mt-2 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
+            <GraduationCap size={12} />
+            Teacher
+          </span>
+
           <div className="mt-3 flex flex-wrap gap-1.5">
             {(tutor.subjects?.length ? tutor.subjects : ["General tutoring"])
               .slice(0, 3)
@@ -417,7 +429,7 @@ function TutorCard({ tutor }) {
           </p>
         </div>
         <a
-          href={`/tutors/${tutor.teacherId}`}
+          href={`/profile/${tutor.teacherId}`}
           className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
         >
           View profile

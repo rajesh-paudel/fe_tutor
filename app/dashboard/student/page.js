@@ -203,7 +203,7 @@ export default function StudentDashboard() {
 
         {/* AI Study Assistant promo */}
         <Link
-          href="/dashboard/student/ai-study"
+          href="/ai-study"
           className="group flex items-center justify-between gap-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-6 transition hover:border-emerald-300 hover:bg-emerald-50"
         >
           <div className="flex items-center gap-4">

@@ -5,7 +5,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import {
   Star,
-  BadgeCheck,
   Clock,
   X,
   Plus,
@@ -28,10 +27,17 @@ const DAYS = [
 
 const ACADEMIC_LEVELS = ["SEE", "+2", "Bachelor's", "Master's", "Professional"];
 
-const VERIFICATION_STYLES = {
-  approved: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  pending: "bg-amber-50 text-amber-700 border-amber-200",
-  rejected: "bg-red-50 text-red-700 border-red-200",
+const ROLE_BADGES = {
+  teacher: {
+    label: "Teacher",
+    icon: GraduationCap,
+    className: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  },
+  student: {
+    label: "Student",
+    icon: BookOpen,
+    className: "bg-sky-50 text-sky-700 border-sky-200",
+  },
 };
 
 export default function ProfilePage() {
@@ -70,6 +76,9 @@ export default function ProfilePage() {
 
   const profile = profileQuery.data?.data;
   const userInfo = profile?.userId;
+  const displayRole = profileQuery.data?.role || userRole;
+  const roleBadge = ROLE_BADGES[displayRole];
+  const RoleBadgeIcon = roleBadge?.icon;
   const initials = (userInfo?.name || "U")
     .trim()
     .split(" ")
@@ -109,19 +118,12 @@ export default function ProfilePage() {
                   <h1 className="text-2xl font-bold tracking-tight text-slate-900">
                     {userInfo?.name || "Your profile"}
                   </h1>
-                  {userRole === "teacher" && profile?.verificationStatus && (
+                  {roleBadge && RoleBadgeIcon && (
                     <span
-                      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium ${
-                        VERIFICATION_STYLES[profile.verificationStatus] ||
-                        VERIFICATION_STYLES.pending
-                      }`}
+                      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium ${roleBadge.className}`}
                     >
-                      <BadgeCheck size={12} />
-                      {profile.verificationStatus === "approved"
-                        ? "Verified tutor"
-                        : profile.verificationStatus === "rejected"
-                          ? "Verification rejected"
-                          : "Verification pending"}
+                      <RoleBadgeIcon size={12} />
+                      {roleBadge.label}
                     </span>
                   )}
                 </div>
@@ -160,6 +162,10 @@ export default function ProfilePage() {
             <>
               <BioSection profile={profile} onSave={updateMutation.mutate} />
               <SubjectsSection
+                profile={profile}
+                onSave={updateMutation.mutate}
+              />
+              <TeachingLevelsSection
                 profile={profile}
                 onSave={updateMutation.mutate}
               />
@@ -336,6 +342,41 @@ function SubjectsSection({ profile, onSave }) {
           values={subjects}
           onChange={setSubjects}
           placeholder="Type a subject and press Enter"
+        />
+      )}
+    />
+  );
+}
+
+function TeachingLevelsSection({ profile, onSave }) {
+  const [teachingLevels, setTeachingLevels] = useState(
+    profile?.teachingLevels || [],
+  );
+
+  return (
+    <EditableSection
+      title="Teaching levels"
+      isEmpty={!profile?.teachingLevels?.length}
+      emptyLabel="Add the levels you teach so level filters can find you."
+      onSave={onSave}
+      buildPayload={() => ({ teachingLevels })}
+      renderView={() => (
+        <div className="flex flex-wrap gap-2">
+          {profile.teachingLevels.map((level) => (
+            <span
+              key={level}
+              className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700"
+            >
+              {level}
+            </span>
+          ))}
+        </div>
+      )}
+      renderEdit={() => (
+        <TagInput
+          values={teachingLevels}
+          onChange={setTeachingLevels}
+          placeholder="Type a level and press Enter"
         />
       )}
     />
