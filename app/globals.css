@@ -1,26 +1,101 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #f8fafc;
+  --foreground: #102033;
+  --card-bg: #ffffff;
+  --border-color: #dbe5ee;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family:
+    ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+/* Custom Scrollbar UI styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #eef4f8;
+}
+::-webkit-scrollbar-thumb {
+  background: #bfd0dd;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94aebe;
+}
+
+/* Glassmorphism utility utility adjustments */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.bg-\[\#090d16\],
+.bg-gray-950,
+.bg-gray-950\/70,
+.bg-gray-900,
+.bg-gray-900\/40,
+.bg-gray-900\/50,
+.bg-gray-900\/70,
+.bg-gray-900\/80 {
+  background-color: #ffffff !important;
+}
+
+.from-gray-900\/80,
+.from-gray-950\/90 {
+  --tw-gradient-from: rgba(255, 255, 255, 0.96) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgba(255, 255, 255, 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+.to-gray-950\/90,
+.to-gray-900\/80 {
+  --tw-gradient-to: rgba(239, 246, 255, 0.78) var(--tw-gradient-to-position) !important;
+}
+
+.border-gray-800,
+.border-gray-700 {
+  border-color: #dbe5ee !important;
+}
+
+.text-white,
+.text-gray-100,
+.text-gray-200 {
+  color: #102033 !important;
+}
+
+.text-gray-300,
+.text-gray-400 {
+  color: #526476 !important;
+}
+
+.text-gray-500,
+.text-gray-600 {
+  color: #6b7c8f !important;
+}
+
+.placeholder-gray-600::placeholder {
+  color: #93a4b7 !important;
+}
+
+.shadow-2xl {
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.12) !important;
+}
+
+input,
+textarea,
+select {
+  color: #102033;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #93a4b7;
 }
