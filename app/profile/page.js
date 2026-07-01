@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import {
@@ -12,6 +12,8 @@ import {
   Check,
   GraduationCap,
   BookOpen,
+  Camera,
+  Trash2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -43,6 +45,9 @@ const ROLE_BADGES = {
 export default function ProfilePage() {
   const queryClient = useQueryClient();
   const [userRole, setUserRole] = useState(null);
+  const fileInputRef = useRef(null);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -50,8 +55,13 @@ export default function ProfilePage() {
     }
   }, []);
 
+  const sessionKey =
+    typeof window !== "undefined"
+      ? localStorage.getItem("token") || "guest"
+      : "guest";
+
   const profileQuery = useQuery({
-    queryKey: ["profilePage"],
+    queryKey: ["profilePage", sessionKey, userRole || "guest"],
     queryFn: async () => {
       const response = await api.get("/profile/me");
       return response.data;
@@ -73,6 +83,53 @@ export default function ProfilePage() {
       toast.error(err.response?.data?.error || "Unable to update profile.");
     },
   });
+
+  const handleImageSelect = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const previewUrl = URL.createObjectURL(file);
+    setSelectedImage({ file, previewUrl });
+  };
+
+  const handleImageUpload = async () => {
+    if (!selectedImage?.file) return;
+
+    try {
+      setUploadingImage(true);
+      const formData = new FormData();
+      formData.append("profileImage", selectedImage.file);
+
+      const response = await api.post("/profile/image", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      setSelectedImage(null);
+      toast.success(response.data?.message || "Profile picture updated.");
+      queryClient.invalidateQueries(["profilePage"]);
+    } catch (err) {
+      toast.error(
+        err.response?.data?.error || "Unable to upload profile picture.",
+      );
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleImageRemove = async () => {
+    try {
+      setUploadingImage(true);
+      const response = await api.delete("/profile/image");
+      toast.success(response.data?.message || "Profile picture removed.");
+      queryClient.invalidateQueries(["profilePage"]);
+    } catch (err) {
+      toast.error(
+        err.response?.data?.error || "Unable to remove profile picture.",
+      );
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const profile = profileQuery.data?.data;
   const userInfo = profile?.userId;
@@ -110,8 +167,32 @@ export default function ProfilePage() {
 
           <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-5">
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-2xl font-semibold text-emerald-700">
-                {initials}
+              <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-visible rounded-full bg-emerald-100 text-2xl font-semibold text-emerald-700">
+                <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full">
+                  {userInfo?.profileImage || selectedImage?.previewUrl ? (
+                    <img
+                      src={selectedImage?.previewUrl || userInfo?.profileImage}
+                      alt="Profile"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="leading-none">{initials}</span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-slate-900 text-white shadow-lg transition hover:bg-slate-700"
+                >
+                  <Camera size={14} />
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageSelect}
+                />
               </div>
               <div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -128,6 +209,36 @@ export default function ProfilePage() {
                   )}
                 </div>
                 <p className="mt-1 text-sm text-slate-500">{userInfo?.email}</p>
+                {(selectedImage || userInfo?.profileImage) && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {selectedImage && (
+                      <button
+                        type="button"
+                        onClick={handleImageUpload}
+                        disabled={uploadingImage}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <Check size={14} />
+                        {uploadingImage ? "Saving..." : "Save photo"}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedImage) {
+                          setSelectedImage(null);
+                          return;
+                        }
+                        handleImageRemove();
+                      }}
+                      disabled={uploadingImage}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Trash2 size={14} />
+                      {selectedImage ? "Cancel" : "Remove photo"}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 

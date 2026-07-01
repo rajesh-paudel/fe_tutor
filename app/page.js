@@ -18,6 +18,7 @@ import HowItWorks from "@/components/HowItWork";
 import BrowseByGoal from "@/components/BrowseByGoal";
 import Testimonials from "@/components/Testimonials";
 import FinalCta from "@/components/Finalcta";
+import JoinSplit from "@/components/JoinSplit";
 
 const highlights = [
   {
@@ -44,10 +45,12 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col justify-between">
       <Hero />
-      <HowItWorks />
       <BrowseByGoal />
+      <HowItWorks />
+
       <Testimonials />
-      <FinalCta />
+
+      <JoinSplit />
     </div>
   );
 }

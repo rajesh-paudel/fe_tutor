@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 import api from "@/lib/api";
-
 import {
   Search,
   Star,
@@ -21,6 +21,11 @@ const SUBJECTS = [
   "English",
   "Computer Science",
   "Programming",
+  "SEE",
+  "+2 Science",
+  "Bachelor",
+  "Engineering",
+  "Medical",
 ];
 
 const LEVELS = ["SEE", "+2", "Bachelor's", "Entrance prep", "Professional"];
@@ -44,8 +49,19 @@ const DEFAULT_FILTERS = {
 };
 
 export default function TutorsPage() {
-  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const searchParams = useSearchParams();
+  const [filters, setFilters] = useState(() => ({
+    ...DEFAULT_FILTERS,
+    // Pre-populate from URL on first render
+    subject: searchParams.get("subject") || "",
+  }));
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+
+  // If the URL param changes (e.g. browser back/forward), sync into filters
+  useEffect(() => {
+    const urlSubject = searchParams.get("subject") || "";
+    setFilters((prev) => ({ ...prev, subject: urlSubject }));
+  }, [searchParams]);
 
   const tutorsQuery = useQuery({
     queryKey: ["publicTutors", filters],
@@ -91,8 +107,24 @@ export default function TutorsPage() {
           </p>
         </div>
 
+        {/* Active subject pill from URL */}
+        {filters.subject && (
+          <div className="mt-5 flex items-center gap-2">
+            <span className="text-sm text-slate-500">Filtered by:</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700">
+              {filters.subject}
+              <button
+                onClick={() => updateFilter("subject", "")}
+                className="text-emerald-500 hover:text-emerald-700"
+              >
+                <X size={13} />
+              </button>
+            </span>
+          </div>
+        )}
+
         {/* Search bar */}
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <label className="relative flex-1">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -142,13 +174,11 @@ export default function TutorsPage() {
 
           {/* Results */}
           <div>
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-slate-500">
-                {tutorsQuery.isLoading
-                  ? "Searching tutors..."
-                  : `${tutors.length} tutor${tutors.length === 1 ? "" : "s"} found`}
-              </p>
-            </div>
+            <p className="text-sm text-slate-500">
+              {tutorsQuery.isLoading
+                ? "Searching tutors..."
+                : `${tutors.length} tutor${tutors.length === 1 ? "" : "s"} found`}
+            </p>
 
             {tutorsQuery.isLoading && (
               <div className="mt-6 grid gap-6 sm:grid-cols-2">
@@ -172,8 +202,7 @@ export default function TutorsPage() {
                     No tutors match these filters
                   </p>
                   <p className="mt-2 text-sm text-slate-500">
-                    Try widening your budget or removing a filter to see more
-                    results.
+                    Try widening your budget or removing a filter.
                   </p>
                   <button
                     onClick={clearFilters}
@@ -372,8 +401,16 @@ function TutorCard({ tutor }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-emerald-200 hover:shadow-md">
       <div className="flex items-start gap-4">
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-base font-semibold text-emerald-700">
-          {initials}
+        <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-emerald-100 text-base font-semibold text-emerald-700">
+          {tutor.profileImage ? (
+            <img
+              src={tutor.profileImage}
+              alt={tutor.name || "Tutor"}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span className="leading-none">{initials}</span>
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
@@ -395,7 +432,7 @@ function TutorCard({ tutor }) {
 
           <span className="mt-2 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
             <GraduationCap size={12} />
-            Teacher
+            Tutor
           </span>
 
           <div className="mt-3 flex flex-wrap gap-1.5">
@@ -429,7 +466,7 @@ function TutorCard({ tutor }) {
           </p>
         </div>
         <a
-          href={`/profile/${tutor.teacherId}`}
+          href={`/tutors/${tutor.teacherId}`}
           className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
         >
           View profile

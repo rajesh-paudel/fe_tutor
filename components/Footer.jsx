@@ -106,10 +106,10 @@ export default function Footer() {
             &copy; {new Date().getFullYear()} EduSphere. All rights reserved.
           </p>
           <div className="flex gap-6">
-            <Link href="/privacy" className="hover:text-emerald-600">
+            <Link href="/privacy-policy" className="hover:text-emerald-600">
               Privacy policy
             </Link>
-            <Link href="/terms" className="hover:text-emerald-600">
+            <Link href="/terms-of-service" className="hover:text-emerald-600">
               Terms of service
             </Link>
           </div>

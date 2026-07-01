@@ -1,20 +1,78 @@
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 
 const goals = [
-  { label: "SEE preparation", count: "120+ tutors" },
-  { label: "+2 Science", count: "95+ tutors" },
-  { label: "Bachelor's coursework", count: "140+ tutors" },
-  { label: "Engineering entrance", count: "60+ tutors" },
-  { label: "Medical entrance (MBBS)", count: "40+ tutors" },
-  { label: "Programming & web dev", count: "85+ tutors" },
-  { label: "IELTS / English", count: "70+ tutors" },
-  { label: "Mathematics", count: "110+ tutors" },
+  {
+    label: "SEE preparation",
+    subject: "SEE",
+    count: "120+ tutors",
+    description:
+      "Core subjects covered: English, Math, Science, Social Studies.",
+    color: "bg-emerald-50 border-emerald-200 hover:border-emerald-400",
+    accent: "text-emerald-700",
+  },
+  {
+    label: "+2 Science",
+    subject: "+2 Science",
+    count: "95+ tutors",
+    description: "Physics, Chemistry, Biology, and Maths for NEB exams.",
+    color: "bg-sky-50 border-sky-200 hover:border-sky-400",
+    accent: "text-sky-700",
+  },
+  {
+    label: "Bachelor's coursework",
+    subject: "Bachelor",
+    count: "140+ tutors",
+    description: "BBA, BCA, B.Sc, B.Ed and other undergraduate subjects.",
+    color: "bg-violet-50 border-violet-200 hover:border-violet-400",
+    accent: "text-violet-700",
+  },
+  {
+    label: "Engineering entrance",
+    subject: "Engineering",
+    count: "60+ tutors",
+    description: "IOE and CEE prep with focused Physics and Math coaching.",
+    color: "bg-orange-50 border-orange-200 hover:border-orange-400",
+    accent: "text-orange-700",
+  },
+  {
+    label: "Medical entrance",
+    subject: "Medical",
+    count: "40+ tutors",
+    description: "MBBS entrance prep: Biology, Chemistry, and Physics.",
+    color: "bg-rose-50 border-rose-200 hover:border-rose-400",
+    accent: "text-rose-700",
+  },
+  {
+    label: "Programming & web dev",
+    subject: "Programming",
+    count: "85+ tutors",
+    description: "Python, JavaScript, React, and more from working developers.",
+    color: "bg-slate-50 border-slate-200 hover:border-slate-400",
+    accent: "text-slate-700",
+  },
+  {
+    label: "IELTS / English",
+    subject: "English",
+    count: "70+ tutors",
+    description:
+      "Speaking, writing, and listening from experienced IELTS trainers.",
+    color: "bg-teal-50 border-teal-200 hover:border-teal-400",
+    accent: "text-teal-700",
+  },
+  {
+    label: "Mathematics",
+    subject: "Mathematics",
+    count: "110+ tutors",
+    description: "From basic arithmetic to calculus and discrete math.",
+    color: "bg-amber-50 border-amber-200 hover:border-amber-400",
+    accent: "text-amber-700",
+  },
 ];
 
 export default function BrowseByGoal() {
   return (
-    <section className="bg-slate-50/60 py-24">
+    <section className="bg-white py-24">
       <div className="mx-auto max-w-7xl px-6">
         <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-end">
           <div className="max-w-xl">
@@ -22,7 +80,8 @@ export default function BrowseByGoal() {
               Browse by goal
             </span>
             <h2 className="mt-4 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-              Whatever you're studying for, there's a tutor for it.
+              Whatever you're studying for,{" "}
+              <span className="text-emerald-600">there's a tutor for it.</span>
             </h2>
           </div>
 
@@ -30,22 +89,37 @@ export default function BrowseByGoal() {
             href="/tutors"
             className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 hover:text-emerald-800"
           >
-            View all subjects
+            View all tutors
             <ArrowUpRight size={16} />
           </Link>
         </div>
 
-        <div className="mt-12 flex flex-wrap gap-3">
+        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {goals.map((goal) => (
             <Link
               key={goal.label}
-              href={`/tutors?goal=${encodeURIComponent(goal.label)}`}
-              className="group inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm transition hover:border-emerald-300 hover:bg-emerald-50"
+              href={`/tutors?subject=${encodeURIComponent(goal.subject)}`}
+              className={`group flex flex-col justify-between rounded-2xl border p-6 transition ${goal.color}`}
             >
-              <span className="font-medium text-slate-800 group-hover:text-emerald-700">
-                {goal.label}
-              </span>
-              <span className="text-slate-400">{goal.count}</span>
+              <div>
+                <h3 className={`text-base font-semibold ${goal.accent}`}>
+                  {goal.label}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  {goal.description}
+                </p>
+              </div>
+
+              <div className="mt-6 flex items-center justify-between">
+                <span className="text-xs font-medium text-slate-400">
+                  {goal.count}
+                </span>
+                <span
+                  className={`flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm transition group-hover:shadow-md ${goal.accent}`}
+                >
+                  <ArrowRight size={14} />
+                </span>
+              </div>
             </Link>
           ))}
         </div>

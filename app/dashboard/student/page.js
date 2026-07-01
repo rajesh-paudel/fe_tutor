@@ -31,8 +31,13 @@ export default function StudentDashboard() {
   const [submissionUrls, setSubmissionUrls] = useState({});
   const [answerMap, setAnswerMap] = useState({});
 
+  const sessionKey =
+    typeof window !== "undefined"
+      ? localStorage.getItem("token") || "guest"
+      : "guest";
+
   const marketplaceQuery = useQuery({
-    queryKey: ["rankedTutors", subject, maxPrice],
+    queryKey: ["rankedTutors", sessionKey, subject, maxPrice],
     queryFn: async () => {
       const params = {};
       if (subject) params.subject = subject;
@@ -43,7 +48,7 @@ export default function StudentDashboard() {
   });
 
   const resourcesQuery = useQuery({
-    queryKey: ["studentResources", subject],
+    queryKey: ["studentResources", sessionKey, subject],
     queryFn: async () => {
       const params = {};
       if (subject) params.subject = subject;
@@ -53,7 +58,7 @@ export default function StudentDashboard() {
   });
 
   const assignmentsQuery = useQuery({
-    queryKey: ["studentAssignments"],
+    queryKey: ["studentAssignments", sessionKey],
     queryFn: async () => {
       const response = await api.get("/assignments");
       return response.data.data;
@@ -61,7 +66,7 @@ export default function StudentDashboard() {
   });
 
   const quizzesQuery = useQuery({
-    queryKey: ["studentQuizzes"],
+    queryKey: ["studentQuizzes", sessionKey],
     queryFn: async () => {
       const response = await api.get("/quizzes");
       return response.data.data;
@@ -69,7 +74,7 @@ export default function StudentDashboard() {
   });
 
   const bookingsQuery = useQuery({
-    queryKey: ["studentBookings"],
+    queryKey: ["studentBookings", sessionKey],
     queryFn: async () => {
       const response = await api.get("/bookings");
       return response.data.data;

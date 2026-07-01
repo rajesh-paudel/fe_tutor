@@ -44,8 +44,13 @@ export default function TeacherDashboard() {
     '[{"question":"What is 2 + 2?","options":["3","4","5","6"],"correctAnswerIndex":1,"difficulty":"easy"}]',
   );
 
+  const sessionKey =
+    typeof window !== "undefined"
+      ? localStorage.getItem("token") || "guest"
+      : "guest";
+
   const profileQuery = useQuery({
-    queryKey: ["teacherProfile"],
+    queryKey: ["teacherProfile", sessionKey],
     queryFn: async () => {
       const response = await api.get("/profile/me");
       return response.data.data;
@@ -53,7 +58,7 @@ export default function TeacherDashboard() {
   });
 
   const bookingsQuery = useQuery({
-    queryKey: ["teacherBookings"],
+    queryKey: ["teacherBookings", sessionKey],
     queryFn: async () => {
       const response = await api.get("/bookings");
       return response.data.data;
@@ -61,7 +66,7 @@ export default function TeacherDashboard() {
   });
 
   const assignmentsQuery = useQuery({
-    queryKey: ["teacherAssignments"],
+    queryKey: ["teacherAssignments", sessionKey],
     queryFn: async () => {
       const response = await api.get("/assignments");
       return response.data.data;
@@ -69,7 +74,7 @@ export default function TeacherDashboard() {
   });
 
   const quizzesQuery = useQuery({
-    queryKey: ["teacherQuizzes"],
+    queryKey: ["teacherQuizzes", sessionKey],
     queryFn: async () => {
       const response = await api.get("/quizzes");
       return response.data.data;
@@ -77,7 +82,7 @@ export default function TeacherDashboard() {
   });
 
   const resourcesQuery = useQuery({
-    queryKey: ["teacherResources"],
+    queryKey: ["teacherResources", sessionKey],
     queryFn: async () => {
       const response = await api.get("/resources");
       return response.data.data;

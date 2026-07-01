@@ -44,6 +44,7 @@ export default function Navbar() {
 
   function confirmSignOut() {
     localStorage.clear();
+    window.dispatchEvent(new Event("auth:changed"));
     setToken(null);
     setRole(null);
     setSignOutDialogOpen(false);

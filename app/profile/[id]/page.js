@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "@/lib/api";
+import { getSocket } from "@/lib/socket";
 
 const DEFAULT_BOOKING = {
   date: "",
@@ -28,12 +29,23 @@ export default function PublicProfilePage() {
   const queryClient = useQueryClient();
   const [bookingForm, setBookingForm] = useState(DEFAULT_BOOKING);
   const [reviewForm, setReviewForm] = useState({ rating: "5", comment: "" });
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [conversationId, setConversationId] = useState(null);
+  const [loadingChat, setLoadingChat] = useState(false);
+  const bottomRef = useRef(null);
 
   const viewerRole =
     typeof window !== "undefined" ? localStorage.getItem("userRole") : null;
 
+  const sessionKey =
+    typeof window !== "undefined"
+      ? localStorage.getItem("token") || "guest"
+      : "guest";
+
   const profileQuery = useQuery({
-    queryKey: ["publicProfile", userId],
+    queryKey: ["publicProfile", sessionKey, userId],
     enabled: Boolean(userId),
     queryFn: async () => {
       const response = await api.get(`/profile/${userId}`);
@@ -42,7 +54,7 @@ export default function PublicProfilePage() {
   });
 
   const reviewsQuery = useQuery({
-    queryKey: ["teacherReviews", userId],
+    queryKey: ["teacherReviews", sessionKey, userId],
     enabled: Boolean(userId) && profileQuery.data?.role === "teacher",
     queryFn: async () => {
       const response = await api.get(`/reviews/teacher/${userId}`);
@@ -81,10 +93,32 @@ export default function PublicProfilePage() {
     },
   });
 
+  useEffect(() => {
+    if (!userId || typeof window === "undefined") return;
+
+    const socket = getSocket();
+    if (!socket) return;
+
+    socket.on("new_message", (message) => {
+      if (message.conversationId === conversationId) {
+        setMessages((prev) => [...prev, message]);
+      }
+    });
+
+    return () => {
+      socket.off("new_message");
+    };
+  }, [conversationId, userId]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
   const profile = profileQuery.data?.data;
   const role = profileQuery.data?.role;
   const user = profile?.userId;
   const isTeacher = role === "teacher";
+  const avatarSrc = user?.profileImage || profile?.profileImage || "";
 
   const initials = useMemo(() => {
     return (user?.name || "U")
@@ -116,6 +150,49 @@ export default function PublicProfilePage() {
       rating: Number(reviewForm.rating),
       comment: reviewForm.comment,
     });
+  }
+
+  async function openChat() {
+    if (!userId || !user?.name) return;
+
+    try {
+      setLoadingChat(true);
+      const response = await api.post("/chat/conversations", {
+        receiverId: userId,
+      });
+      const conversation = response.data?.data;
+      const currentConversationId = conversation?._id;
+      setConversationId(currentConversationId);
+      setChatOpen(true);
+
+      const messagesResponse = await api.get(
+        `/chat/conversations/${currentConversationId}/messages`,
+      );
+      setMessages(messagesResponse.data?.data || []);
+
+      const socket = getSocket();
+      socket?.emit("join_conversation", {
+        conversationId: currentConversationId,
+        receiverId: userId,
+      });
+    } catch (err) {
+      toast.error(err.response?.data?.error || "Unable to open chat.");
+    } finally {
+      setLoadingChat(false);
+    }
+  }
+
+  function sendMessage(event) {
+    event.preventDefault();
+    if (!chatInput.trim() || !conversationId || !userId) return;
+
+    const socket = getSocket();
+    socket?.emit("send_message", {
+      conversationId,
+      receiverId: userId,
+      content: chatInput.trim(),
+    });
+    setChatInput("");
   }
 
   if (profileQuery.isLoading) {
@@ -150,8 +227,16 @@ export default function PublicProfilePage() {
         <section className="rounded-3xl border border-slate-200 bg-slate-50/70 p-8">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-5">
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-2xl font-semibold text-emerald-700">
-                {initials}
+              <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-emerald-100 text-2xl font-semibold text-emerald-700">
+                {avatarSrc ? (
+                  <img
+                    src={avatarSrc}
+                    alt={user?.name || "Profile picture"}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="leading-none">{initials}</span>
+                )}
               </div>
               <div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -169,24 +254,90 @@ export default function PublicProfilePage() {
                 </div>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
                   {isTeacher
-                    ? profile.bio || "This teacher is still completing their profile."
+                    ? profile.bio ||
+                      "This teacher is still completing their profile."
                     : `Academic level: ${profile.academicLevel || "Not added yet"}`}
                 </p>
               </div>
             </div>
 
-            {isTeacher && (
-              <div className="grid grid-cols-3 gap-3 text-center">
-                <Stat value={profile.averageRating || "New"} label="Rating" />
-                <Stat value={profile.reviewCount || 0} label="Reviews" />
-                <Stat
-                  value={`${profile.experienceYears || 0}`}
-                  label="Years"
-                />
-              </div>
-            )}
+            <div className="flex flex-col gap-3 sm:items-end">
+              {isTeacher && (
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <Stat value={profile.averageRating || "New"} label="Rating" />
+                  <Stat value={profile.reviewCount || 0} label="Reviews" />
+                  <Stat
+                    value={`${profile.experienceYears || 0}`}
+                    label="Years"
+                  />
+                </div>
+              )}
+              <button
+                onClick={openChat}
+                disabled={loadingChat}
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loadingChat ? "Opening..." : "Start conversation"}
+              </button>
+            </div>
           </div>
         </section>
+
+        {chatOpen && (
+          <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-base font-semibold text-slate-900">
+                Chat with {user?.name}
+              </h2>
+              <button
+                onClick={() => setChatOpen(false)}
+                className="text-sm font-medium text-slate-500 hover:text-slate-700"
+              >
+                Close
+              </button>
+            </div>
+            <div className="h-64 space-y-2 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
+              {messages.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  Start the conversation by sending a message.
+                </p>
+              ) : (
+                messages.map((message) => {
+                  const isMine =
+                    message.senderId === localStorage.getItem("userId") ||
+                    message.senderId === localStorage.getItem("token");
+                  return (
+                    <div
+                      key={message._id}
+                      className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+                    >
+                      <div
+                        className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${isMine ? "bg-emerald-600 text-white" : "bg-white text-slate-700"}`}
+                      >
+                        {message.content}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+              <div ref={bottomRef} />
+            </div>
+            <form onSubmit={sendMessage} className="mt-3 flex gap-2">
+              <input
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Type your message..."
+                className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none"
+              />
+              <button
+                type="submit"
+                className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+              >
+                <Send size={16} />
+              </button>
+            </form>
+          </section>
+        )}
 
         <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
           <div className="space-y-8">

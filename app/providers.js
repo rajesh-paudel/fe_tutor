@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 
@@ -17,6 +17,15 @@ export default function Providers({ children }) {
         },
       }),
   );
+
+  useEffect(() => {
+    const handleAuthChange = () => {
+      queryClient.clear();
+    };
+
+    window.addEventListener("auth:changed", handleAuthChange);
+    return () => window.removeEventListener("auth:changed", handleAuthChange);
+  }, [queryClient]);
 
   return (
     <QueryClientProvider client={queryClient}>

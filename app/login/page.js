@@ -21,6 +21,7 @@ export default function LoginPage() {
       localStorage.removeItem("token");
       localStorage.removeItem("userRole");
       localStorage.removeItem("userName");
+      window.dispatchEvent(new Event("auth:changed"));
 
       const response = await api.post("/auth/login", payload);
       return response.data;
