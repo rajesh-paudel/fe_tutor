@@ -1,32 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 
-import {
-  Clock,
-  Check,
-  X,
-  DollarSign,
-  Briefcase,
-  Award,
-  FileText,
-  UserCheck,
-  BookOpen,
-  NotebookPen,
-  Sparkles,
-} from "lucide-react";
+import { Clock, Check, X, Award, FileText, BookOpen } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function TeacherDashboard() {
   const queryClient = useQueryClient();
-
-  const [hourlyRate, setHourlyRate] = useState("");
-  const [experienceYears, setExperienceYears] = useState("");
-  const [bio, setBio] = useState("");
-  const [subjects, setSubjects] = useState("");
-  const [weeklyAvailability, setWeeklyAvailability] = useState("");
 
   const [assignmentTitle, setAssignmentTitle] = useState("");
   const [assignmentInstructions, setAssignmentInstructions] = useState("");
@@ -49,14 +31,6 @@ export default function TeacherDashboard() {
       ? localStorage.getItem("token") || "guest"
       : "guest";
 
-  const profileQuery = useQuery({
-    queryKey: ["teacherProfile", sessionKey],
-    queryFn: async () => {
-      const response = await api.get("/profile/me");
-      return response.data.data;
-    },
-  });
-
   const bookingsQuery = useQuery({
     queryKey: ["teacherBookings", sessionKey],
     queryFn: async () => {
@@ -64,6 +38,20 @@ export default function TeacherDashboard() {
       return response.data.data;
     },
   });
+
+  const studentOptions = bookingsQuery.data
+    ? [
+        { _id: "", name: "All students" },
+        ...Array.from(
+          bookingsQuery.data
+            .filter((booking) => booking.studentId)
+            .reduce((map, booking) => {
+              map.set(booking.studentId._id, booking.studentId.name);
+              return map;
+            }, new Map()),
+        ).map(([id, name]) => ({ _id: id, name })),
+      ]
+    : [{ _id: "", name: "All students" }];
 
   const assignmentsQuery = useQuery({
     queryKey: ["teacherAssignments", sessionKey],
@@ -89,32 +77,6 @@ export default function TeacherDashboard() {
     },
   });
 
-  useEffect(() => {
-    if (profileQuery.data) {
-      setHourlyRate(profileQuery.data.hourlyRate ?? "");
-      setExperienceYears(profileQuery.data.experienceYears ?? "");
-      setBio(profileQuery.data.bio ?? "");
-      setSubjects((profileQuery.data.subjects || []).join(", "));
-      setWeeklyAvailability(profileQuery.data.weeklyAvailability || "");
-    }
-  }, [profileQuery.data]);
-
-  const updateProfileMutation = useMutation({
-    mutationFn: async (payload) => {
-      const response = await api.put("/profile/teacher", payload);
-      return response.data;
-    },
-    onSuccess: () => {
-      toast.success("Professional profile updated successfully.");
-      queryClient.invalidateQueries(["teacherProfile"]);
-    },
-    onError: (err) => {
-      toast.error(
-        err.response?.data?.error || "Failed to update profile indicators.",
-      );
-    },
-  });
-
   const createAssignmentMutation = useMutation({
     mutationFn: async (payload) => {
       const response = await api.post("/assignments", payload);
@@ -126,6 +88,7 @@ export default function TeacherDashboard() {
       setAssignmentInstructions("");
       setAssignmentSubject("");
       setAssignmentDueDate("");
+      setAssignmentAssignedStudentId("");
       queryClient.invalidateQueries(["teacherAssignments"]);
     },
     onError: (err) => {
@@ -147,6 +110,7 @@ export default function TeacherDashboard() {
       setQuizQuestionsInput(
         '[{"question":"What is 2 + 2?","options":["3","4","5","6"],"correctAnswerIndex":1,"difficulty":"easy"}]',
       );
+      setQuizAssignedStudentId("");
       queryClient.invalidateQueries(["teacherQuizzes"]);
     },
     onError: (err) => {
@@ -165,6 +129,7 @@ export default function TeacherDashboard() {
       setResourceSubject("");
       setResourceText("");
       setResourceDescription("");
+      setResourceAssignedStudentId("");
       queryClient.invalidateQueries(["teacherResources"]);
     },
     onError: (err) => {
@@ -172,33 +137,38 @@ export default function TeacherDashboard() {
     },
   });
 
+  const [meetingLinkDialogOpen, setMeetingLinkDialogOpen] = useState(false);
+  const [selectedBookingId, setSelectedBookingId] = useState(null);
+  const [meetingLinkInput, setMeetingLinkInput] = useState("");
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [showQuizModal, setShowQuizModal] = useState(false);
+  const [showResourceModal, setShowResourceModal] = useState(false);
+  const [assignmentAssignedStudentId, setAssignmentAssignedStudentId] =
+    useState("");
+  const [quizAssignedStudentId, setQuizAssignedStudentId] = useState("");
+  const [resourceAssignedStudentId, setResourceAssignedStudentId] =
+    useState("");
+
   const bookingStatusMutation = useMutation({
-    mutationFn: async ({ id, status }) => {
-      const response = await api.put(`/bookings/${id}/status`, { status });
+    mutationFn: async ({ id, status, meetingLink }) => {
+      const payload = { status };
+      if (status === "accepted") {
+        payload.meetingLink = meetingLink;
+      }
+      const response = await api.put(`/bookings/${id}/status`, payload);
       return response.data;
     },
     onSuccess: (data) => {
       toast.success(data.message || "Schedule updated.");
       queryClient.invalidateQueries(["teacherBookings"]);
+      setMeetingLinkDialogOpen(false);
+      setSelectedBookingId(null);
+      setMeetingLinkInput("");
     },
     onError: (err) => {
       toast.error(err.response?.data?.error || "Workflow mutation rejected.");
     },
   });
-
-  const handleProfileSubmit = (e) => {
-    e.preventDefault();
-    updateProfileMutation.mutate({
-      hourlyRate: Number(hourlyRate),
-      experienceYears: Number(experienceYears),
-      bio,
-      subjects: subjects
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean),
-      weeklyAvailability,
-    });
-  };
 
   const handleAssignmentSubmit = (e) => {
     e.preventDefault();
@@ -207,6 +177,7 @@ export default function TeacherDashboard() {
       instructions: assignmentInstructions,
       subject: assignmentSubject,
       dueDate: assignmentDueDate,
+      assignedStudentId: assignmentAssignedStudentId || undefined,
     });
   };
 
@@ -224,6 +195,7 @@ export default function TeacherDashboard() {
       subject: quizSubject,
       questions: parsedQuestions,
       isGeneratedByAI: false,
+      assignedStudentId: quizAssignedStudentId || undefined,
     });
   };
 
@@ -235,11 +207,11 @@ export default function TeacherDashboard() {
       subject: resourceSubject,
       textContent: resourceText,
       fileType: "pdf",
+      assignedStudentId: resourceAssignedStudentId || undefined,
     });
   };
 
   const isLoading =
-    profileQuery.isLoading ||
     bookingsQuery.isLoading ||
     assignmentsQuery.isLoading ||
     quizzesQuery.isLoading ||
@@ -260,295 +232,504 @@ export default function TeacherDashboard() {
           <div className="flex flex-wrap items-center gap-2 text-sm text-emerald-400">
             <Award className="h-5 w-5" /> Educator workspace control center
           </div>
-          <h1 className="mt-2 text-3xl font-extrabold text-white">
+          <h1 className="mt-2 text-3xl font-extrabold text-slate-900">
             Run your tutor business from one clean workspace
           </h1>
-          <p className="mt-2 max-w-2xl text-sm text-gray-400">
-            Manage your profile, publish assignments and quizzes, share
-            resources, and respond to booking requests.
+          <p className="mt-2 max-w-2xl text-sm text-gray-500">
+            Publish assignments, quizzes, and resources from one clean content
+            workspace.
           </p>
         </div>
 
         <div className="grid gap-8 xl:grid-cols-[0.95fr_1.05fr]">
           <div className="space-y-8">
-            <section className="rounded-2xl border border-gray-800 bg-gray-900/40 p-6">
-              <div className="flex items-center gap-2 border-b border-gray-800 pb-3">
-                <UserCheck className="h-5 w-5 text-emerald-400" />
-                <h2 className="text-lg font-semibold text-white">
-                  Profile & availability
+            <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                <BookOpen className="h-5 w-5 text-indigo-500" />
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Content workspace
                 </h2>
               </div>
-              <div
-                className={`mt-4 rounded-lg border p-3 text-sm font-semibold ${profileQuery.data?.verificationStatus === "approved" ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-400" : "border-amber-500/20 bg-amber-500/5 text-amber-400"}`}
-              >
-                Verification status:{" "}
-                {profileQuery.data?.verificationStatus || "pending"}
-              </div>
-              <form onSubmit={handleProfileSubmit} className="mt-5 space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="text-sm text-gray-400">
-                    <span className="mb-2 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500">
-                      <DollarSign className="h-3 w-3" /> Hourly rate
-                    </span>
-                    <input
-                      value={hourlyRate}
-                      onChange={(e) => setHourlyRate(e.target.value)}
-                      type="number"
-                      className="w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm text-white focus:border-emerald-500 focus:outline-none"
-                    />
-                  </label>
-                  <label className="text-sm text-gray-400">
-                    <span className="mb-2 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500">
-                      <Briefcase className="h-3 w-3" /> Experience
-                    </span>
-                    <input
-                      value={experienceYears}
-                      onChange={(e) => setExperienceYears(e.target.value)}
-                      type="number"
-                      className="w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm text-white focus:border-emerald-500 focus:outline-none"
-                    />
-                  </label>
+              <p className="mt-3 text-sm text-gray-500">
+                Create assignments, quizzes, and resources from separate modals.
+                Assign to a specific student or make the content available to
+                all.
+              </p>
+              <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl border border-gray-100 bg-slate-50 p-4">
+                  <p className="text-sm uppercase tracking-[0.2em] text-slate-400">
+                    Assignments
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold text-slate-900">
+                    {assignmentsQuery.data?.length ?? 0}
+                  </p>
                 </div>
-                <label className="block text-sm text-gray-400">
-                  <span className="mb-2 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500">
-                    <Sparkles className="h-3 w-3" /> Subjects
-                  </span>
-                  <input
-                    value={subjects}
-                    onChange={(e) => setSubjects(e.target.value)}
-                    placeholder="Math, Physics, Java"
-                    className="w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm text-white focus:border-emerald-500 focus:outline-none"
-                  />
-                </label>
-                <label className="block text-sm text-gray-400">
-                  <span className="mb-2 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500">
-                    <Clock className="h-3 w-3" /> Weekly availability
-                  </span>
-                  <input
-                    value={weeklyAvailability}
-                    onChange={(e) => setWeeklyAvailability(e.target.value)}
-                    placeholder="Mon-Fri 18:00-21:00"
-                    className="w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm text-white focus:border-emerald-500 focus:outline-none"
-                  />
-                </label>
-                <label className="block text-sm text-gray-400">
-                  <span className="mb-2 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500">
-                    <FileText className="h-3 w-3" /> Bio
-                  </span>
-                  <textarea
-                    rows="4"
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    className="w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm text-white focus:border-emerald-500 focus:outline-none"
-                  />
-                </label>
+                <div className="rounded-2xl border border-gray-100 bg-slate-50 p-4">
+                  <p className="text-sm uppercase tracking-[0.2em] text-slate-400">
+                    Quizzes
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold text-slate-900">
+                    {quizzesQuery.data?.length ?? 0}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-gray-100 bg-slate-50 p-4">
+                  <p className="text-sm uppercase tracking-[0.2em] text-slate-400">
+                    Resources
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold text-slate-900">
+                    {resourcesQuery.data?.length ?? 0}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <button
-                  type="submit"
-                  disabled={updateProfileMutation.isPending}
-                  className="w-full rounded-lg bg-emerald-500 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:opacity-50"
+                  onClick={() => {
+                    setAssignmentAssignedStudentId("");
+                    setShowAssignmentModal(true);
+                  }}
+                  className="rounded-2xl border border-indigo-500 bg-indigo-500/10 px-4 py-3 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-500/20"
                 >
-                  {updateProfileMutation.isPending
-                    ? "Saving..."
-                    : "Save profile"}
+                  Publish assignment
                 </button>
-              </form>
+                <button
+                  onClick={() => {
+                    setQuizAssignedStudentId("");
+                    setShowQuizModal(true);
+                  }}
+                  className="rounded-2xl border border-amber-500 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-600 transition hover:bg-amber-500/20"
+                >
+                  Create quiz
+                </button>
+                <button
+                  onClick={() => {
+                    setResourceAssignedStudentId("");
+                    setShowResourceModal(true);
+                  }}
+                  className="rounded-2xl border border-purple-500 bg-purple-500/10 px-4 py-3 text-sm font-semibold text-purple-600 transition hover:bg-purple-500/20"
+                >
+                  Share resource
+                </button>
+              </div>
+            </section>
+          </div>
+
+          <div className="space-y-4 ">
+            <section className="rounded-2xl max-w-lg  border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
+                <Clock className="h-5 w-5 text-emerald-500" />
+                <h2 className="text-sm font-semibold text-slate-900">
+                  Booking requests
+                </h2>
+              </div>
+              <div className="mt-2 space-y-2">
+                {bookingsQuery.data
+                  ?.slice()
+                  .sort(
+                    (a, b) =>
+                      new Date(b.createdAt).getTime() -
+                      new Date(a.createdAt).getTime(),
+                  )
+                  .map((booking) => (
+                    <div
+                      key={booking._id}
+                      className="ml-auto max-w-lg rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm"
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-slate-200 border border-slate-300">
+                          {booking.studentId?.profileImage ? (
+                            <img
+                              src={booking.studentId.profileImage}
+                              alt={booking.studentId?.name || "Student"}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-xs font-semibold uppercase text-slate-600">
+                              {booking.studentId?.name
+                                ? booking.studentId.name
+                                    .split(" ")
+                                    .map((part) => part[0] || "")
+                                    .slice(0, 2)
+                                    .join("")
+                                : "ST"}
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-slate-900">
+                                {booking.studentId?.name || "Student"}
+                              </p>
+                              <p className="mt-1 text-[11px] text-slate-500">
+                                {booking.date} • {booking.startTime} -{" "}
+                                {booking.endTime}
+                              </p>
+                            </div>
+                            <span
+                              className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${
+                                booking.status === "pending"
+                                  ? "border-amber-200 bg-amber-50 text-amber-700"
+                                  : booking.status === "accepted"
+                                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                    : booking.status === "rejected"
+                                      ? "border-rose-200 bg-rose-50 text-rose-700"
+                                      : "border-slate-200 bg-slate-100 text-slate-600"
+                              }`}
+                            >
+                              {booking.status}
+                            </span>
+                          </div>
+                          {booking.note && (
+                            <p className="mt-1 text-sm leading-5 text-slate-600">
+                              {booking.note}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
+                          {new Date(booking.createdAt).toLocaleDateString()}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {booking.status === "pending" ? (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setSelectedBookingId(booking._id);
+                                  setMeetingLinkInput("");
+                                  setMeetingLinkDialogOpen(true);
+                                }}
+                                className="rounded-full bg-emerald-600 px-2.5 py-1 text-[10px] font-semibold text-white transition hover:bg-emerald-700"
+                              >
+                                Accept
+                              </button>
+                              <button
+                                onClick={() =>
+                                  bookingStatusMutation.mutate({
+                                    id: booking._id,
+                                    status: "rejected",
+                                  })
+                                }
+                                disabled={bookingStatusMutation.isPending}
+                                className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-700 transition hover:bg-slate-50"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          ) : booking.status === "accepted" &&
+                            booking.meetingLink ? (
+                            <a
+                              href={booking.meetingLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded-full bg-emerald-600 px-2.5 py-1 text-[10px] font-semibold text-white transition hover:bg-emerald-700"
+                            >
+                              Join
+                            </a>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
             </section>
 
-            <section className="rounded-2xl border border-gray-800 bg-gray-900/40 p-6">
-              <div className="flex items-center gap-2 border-b border-gray-800 pb-3">
-                <BookOpen className="h-5 w-5 text-indigo-400" />
-                <h2 className="text-lg font-semibold text-white">
-                  Publish an assignment
-                </h2>
+            {meetingLinkDialogOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4 py-6">
+                <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
+                  <h3 className="text-xl font-semibold text-slate-900">
+                    Enter meeting link before accepting
+                  </h3>
+                  <p className="mt-2 text-sm text-slate-600">
+                    This link will be saved for the student and used for your
+                    confirmed session.
+                  </p>
+                  <label className="mt-6 block text-sm font-medium text-slate-700">
+                    Meeting link
+                    <input
+                      value={meetingLinkInput}
+                      onChange={(e) => setMeetingLinkInput(e.target.value)}
+                      placeholder="https://meet.jit.si/your-session-link"
+                      className="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </label>
+                  <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                    <button
+                      onClick={() => {
+                        setMeetingLinkDialogOpen(false);
+                        setSelectedBookingId(null);
+                        setMeetingLinkInput("");
+                      }}
+                      className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!meetingLinkInput.trim()) {
+                          toast.error("Please enter a meeting link.");
+                          return;
+                        }
+                        bookingStatusMutation.mutate({
+                          id: selectedBookingId,
+                          status: "accepted",
+                          meetingLink: meetingLinkInput.trim(),
+                        });
+                      }}
+                      disabled={bookingStatusMutation.isPending}
+                      className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50"
+                    >
+                      {bookingStatusMutation.isPending
+                        ? "Accepting..."
+                        : "Confirm accept"}
+                    </button>
+                  </div>
+                </div>
               </div>
-              <form
-                onSubmit={handleAssignmentSubmit}
-                className="mt-5 space-y-4"
+            )}
+          </div>
+        </div>
+      </main>
+
+      {showAssignmentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 px-4 py-6">
+          <div className="w-full max-w-2xl rounded-3xl bg-slate-950 p-6 shadow-2xl border border-slate-800">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-semibold text-white">
+                  Publish assignment
+                </h3>
+                <p className="text-sm text-slate-400">
+                  Create a task for one student or all students.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAssignmentModal(false)}
+                className="text-slate-400 transition hover:text-white"
               >
+                Close
+              </button>
+            </div>
+            <form onSubmit={handleAssignmentSubmit} className="mt-6 space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <input
                   value={assignmentTitle}
                   onChange={(e) => setAssignmentTitle(e.target.value)}
                   placeholder="Assignment title"
-                  className="w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white focus:border-indigo-500 focus:outline-none"
                 />
                 <input
                   value={assignmentSubject}
                   onChange={(e) => setAssignmentSubject(e.target.value)}
                   placeholder="Subject"
-                  className="w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white focus:border-indigo-500 focus:outline-none"
                 />
-                <textarea
-                  rows="3"
-                  value={assignmentInstructions}
-                  onChange={(e) => setAssignmentInstructions(e.target.value)}
-                  placeholder="Instructions"
-                  className="w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
-                />
+              </div>
+              <textarea
+                rows="4"
+                value={assignmentInstructions}
+                onChange={(e) => setAssignmentInstructions(e.target.value)}
+                placeholder="Instructions"
+                className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white focus:border-indigo-500 focus:outline-none"
+              />
+              <div className="grid gap-4 sm:grid-cols-2">
                 <input
                   value={assignmentDueDate}
                   onChange={(e) => setAssignmentDueDate(e.target.value)}
                   type="date"
-                  className="w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white focus:border-indigo-500 focus:outline-none"
                 />
+                <select
+                  value={assignmentAssignedStudentId}
+                  onChange={(e) =>
+                    setAssignmentAssignedStudentId(e.target.value)
+                  }
+                  className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                >
+                  {studentOptions.map((student) => (
+                    <option key={student._id} value={student._id}>
+                      {student.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowAssignmentModal(false)}
+                  className="rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-slate-800"
+                >
+                  Cancel
+                </button>
                 <button
                   type="submit"
                   disabled={createAssignmentMutation.isPending}
-                  className="w-full rounded-lg bg-indigo-500 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-400 disabled:opacity-50"
+                  className="rounded-2xl bg-indigo-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-400 disabled:opacity-50"
                 >
                   {createAssignmentMutation.isPending
                     ? "Publishing..."
                     : "Publish assignment"}
                 </button>
-              </form>
-            </section>
+              </div>
+            </form>
           </div>
+        </div>
+      )}
 
-          <div className="space-y-8">
-            <section className="rounded-2xl border border-gray-800 bg-gray-900/40 p-6">
-              <div className="flex items-center gap-2 border-b border-gray-800 pb-3">
-                <Clock className="h-5 w-5 text-emerald-400" />
-                <h2 className="text-lg font-semibold text-white">
-                  Booking requests
-                </h2>
+      {showQuizModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 px-4 py-6">
+          <div className="w-full max-w-2xl rounded-3xl bg-slate-950 p-6 shadow-2xl border border-slate-800">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-semibold text-white">
+                  Create quiz
+                </h3>
+                <p className="text-sm text-slate-400">
+                  Draft questions and assign to a student or publish to all.
+                </p>
               </div>
-              <div className="mt-4 space-y-3">
-                {bookingsQuery.data?.map((booking) => (
-                  <div
-                    key={booking._id}
-                    className="rounded-xl border border-gray-800 bg-gray-950/70 p-3"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="font-medium text-white">
-                          {booking.studentId?.name || "Student"}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {booking.date} • {booking.startTime} -{" "}
-                          {booking.endTime}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {booking.status === "pending" ? (
-                          <>
-                            <button
-                              onClick={() =>
-                                bookingStatusMutation.mutate({
-                                  id: booking._id,
-                                  status: "accepted",
-                                })
-                              }
-                              className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-2 text-emerald-400 transition hover:bg-emerald-500 hover:text-white"
-                            >
-                              <Check className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() =>
-                                bookingStatusMutation.mutate({
-                                  id: booking._id,
-                                  status: "rejected",
-                                })
-                              }
-                              className="rounded-lg border border-red-500/20 bg-red-500/10 p-2 text-red-400 transition hover:bg-red-500 hover:text-white"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </>
-                        ) : (
-                          <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-emerald-400">
-                            {booking.status}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section className="rounded-2xl border border-gray-800 bg-gray-900/40 p-6">
-              <div className="flex items-center gap-2 border-b border-gray-800 pb-3">
-                <NotebookPen className="h-5 w-5 text-amber-400" />
-                <h2 className="text-lg font-semibold text-white">
-                  Create a quiz
-                </h2>
-              </div>
-              <form onSubmit={handleQuizSubmit} className="mt-5 space-y-4">
+              <button
+                onClick={() => setShowQuizModal(false)}
+                className="text-slate-400 transition hover:text-white"
+              >
+                Close
+              </button>
+            </div>
+            <form onSubmit={handleQuizSubmit} className="mt-6 space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <input
                   value={quizTitle}
                   onChange={(e) => setQuizTitle(e.target.value)}
                   placeholder="Quiz title"
-                  className="w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm text-white focus:border-amber-500 focus:outline-none"
+                  className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white focus:border-amber-500 focus:outline-none"
                 />
                 <input
                   value={quizSubject}
                   onChange={(e) => setQuizSubject(e.target.value)}
                   placeholder="Subject"
-                  className="w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm text-white focus:border-amber-500 focus:outline-none"
+                  className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white focus:border-amber-500 focus:outline-none"
                 />
-                <textarea
-                  rows="6"
-                  value={quizQuestionsInput}
-                  onChange={(e) => setQuizQuestionsInput(e.target.value)}
-                  placeholder='[{"question":"What is 2 + 2?","options":["3","4","5","6"],"correctAnswerIndex":1,"difficulty":"easy"}]'
-                  className="w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm text-white focus:border-amber-500 focus:outline-none font-mono"
-                />
+              </div>
+              <textarea
+                rows="6"
+                value={quizQuestionsInput}
+                onChange={(e) => setQuizQuestionsInput(e.target.value)}
+                placeholder='[{"question":"What is 2 + 2?","options":["3","4","5","6"],"correctAnswerIndex":1,"difficulty":"easy"}]'
+                className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white focus:border-amber-500 focus:outline-none font-mono"
+              />
+              <select
+                value={quizAssignedStudentId}
+                onChange={(e) => setQuizAssignedStudentId(e.target.value)}
+                className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white focus:border-amber-500 focus:outline-none"
+              >
+                {studentOptions.map((student) => (
+                  <option key={student._id} value={student._id}>
+                    {student.name}
+                  </option>
+                ))}
+              </select>
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowQuizModal(false)}
+                  className="rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-slate-800"
+                >
+                  Cancel
+                </button>
                 <button
                   type="submit"
                   disabled={createQuizMutation.isPending}
-                  className="w-full rounded-lg bg-amber-500 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-400 disabled:opacity-50"
+                  className="rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-400 disabled:opacity-50"
                 >
                   {createQuizMutation.isPending ? "Creating..." : "Create quiz"}
                 </button>
-              </form>
-            </section>
-
-            <section className="rounded-2xl border border-gray-800 bg-gray-900/40 p-6">
-              <div className="flex items-center gap-2 border-b border-gray-800 pb-3">
-                <FileText className="h-5 w-5 text-purple-400" />
-                <h2 className="text-lg font-semibold text-white">
-                  Share a resource
-                </h2>
               </div>
-              <form onSubmit={handleResourceSubmit} className="mt-5 space-y-4">
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showResourceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 px-4 py-6">
+          <div className="w-full max-w-2xl rounded-3xl bg-slate-950 p-6 shadow-2xl border border-slate-800">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-semibold text-white">
+                  Share learning resource
+                </h3>
+                <p className="text-sm text-slate-400">
+                  Upload textual context materials or references for your
+                  students.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowResourceModal(false)}
+                className="text-slate-400 transition hover:text-white"
+              >
+                Close
+              </button>
+            </div>
+            <form onSubmit={handleResourceSubmit} className="mt-6 space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <input
                   value={resourceTitle}
                   onChange={(e) => setResourceTitle(e.target.value)}
                   placeholder="Resource title"
-                  className="w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm text-white focus:border-purple-500 focus:outline-none"
+                  className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white focus:border-purple-500 focus:outline-none"
                 />
                 <input
                   value={resourceSubject}
                   onChange={(e) => setResourceSubject(e.target.value)}
                   placeholder="Subject"
-                  className="w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm text-white focus:border-purple-500 focus:outline-none"
+                  className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white focus:border-purple-500 focus:outline-none"
                 />
-                <input
-                  value={resourceDescription}
-                  onChange={(e) => setResourceDescription(e.target.value)}
-                  placeholder="Short description"
-                  className="w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm text-white focus:border-purple-500 focus:outline-none"
-                />
-                <textarea
-                  rows="4"
-                  value={resourceText}
-                  onChange={(e) => setResourceText(e.target.value)}
-                  placeholder="Paste lecture notes or study content"
-                  className="w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-2.5 text-sm text-white focus:border-purple-500 focus:outline-none"
-                />
+              </div>
+              <input
+                value={resourceDescription}
+                onChange={(e) => setResourceDescription(e.target.value)}
+                placeholder="Brief summary or description description"
+                className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white focus:border-purple-500 focus:outline-none"
+              />
+              <textarea
+                rows="5"
+                value={resourceText}
+                onChange={(e) => setResourceText(e.target.value)}
+                placeholder="Paste structural raw resource text content here..."
+                className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white focus:border-purple-500 focus:outline-none"
+              />
+              <select
+                value={resourceAssignedStudentId}
+                onChange={(e) => setResourceAssignedStudentId(e.target.value)}
+                className="w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white focus:border-purple-500 focus:outline-none"
+              >
+                {studentOptions.map((student) => (
+                  <option key={student._id} value={student._id}>
+                    {student.name}
+                  </option>
+                ))}
+              </select>
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowResourceModal(false)}
+                  className="rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-slate-800"
+                >
+                  Cancel
+                </button>
                 <button
                   type="submit"
                   disabled={uploadResourceMutation.isPending}
-                  className="w-full rounded-lg bg-purple-500 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-purple-400 disabled:opacity-50"
+                  className="rounded-2xl bg-purple-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-purple-400 disabled:opacity-50"
                 >
                   {uploadResourceMutation.isPending
-                    ? "Publishing..."
-                    : "Publish resource"}
+                    ? "Sharing..."
+                    : "Share resource"}
                 </button>
-              </form>
-            </section>
+              </div>
+            </form>
           </div>
         </div>
-      </main>
+      )}
     </div>
   );
 }

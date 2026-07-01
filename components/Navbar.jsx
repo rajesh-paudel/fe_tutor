@@ -87,12 +87,14 @@ export default function Navbar() {
                 Home
               </Link>
 
-              <Link
-                href="/tutors"
-                className={`flex items-center gap-1 transition-colors ${pathname === "/tutors" ? "text-emerald-700 font-medium" : "text-slate-600 hover:text-slate-950"}`}
-              >
-                Find a tutor
-              </Link>
+              {role !== "teacher" && (
+                <Link
+                  href="/tutors"
+                  className={`flex items-center gap-1 transition-colors ${pathname === "/tutors" ? "text-emerald-700 font-medium" : "text-slate-600 hover:text-slate-950"}`}
+                >
+                  Find a tutor
+                </Link>
+              )}
 
               {token && (
                 <>
@@ -231,13 +233,15 @@ export default function Navbar() {
             >
               About
             </Link>
-            <Link
-              href="/tutors"
-              onClick={() => setIsOpen(false)}
-              className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-100"
-            >
-              Tutors
-            </Link>
+            {role !== "teacher" && (
+              <Link
+                href="/tutors"
+                onClick={() => setIsOpen(false)}
+                className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Tutors
+              </Link>
+            )}
             <Link
               href="/contact"
               onClick={() => setIsOpen(false)}

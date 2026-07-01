@@ -39,7 +39,7 @@ export default function JoinSplit() {
               </ul>
 
               <Link
-                href="/tutor"
+                href="/tutors"
                 className="mt-8 inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
               >
                 Find a tutor
