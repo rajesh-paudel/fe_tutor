@@ -76,6 +76,7 @@ export default function BookingsPage() {
   }
 
   const bookings = bookingsQuery.data || [];
+  const isTeacherView = userRole === "teacher";
   const pendingBookings = bookings.filter(
     (booking) => booking.status === "pending",
   );
@@ -99,22 +100,23 @@ export default function BookingsPage() {
         <div className="flex flex-col items-center text-center mb-10">
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold tracking-wider text-emerald-800 shadow-sm">
             <CalendarRange className="h-4 w-4 text-emerald-600" />
-            BOOKING MANAGEMENT
+            {isTeacherView ? "TUTOR BOOKINGS" : "STUDENT BOOKINGS"}
           </div>
           <h1 className="mt-5 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Your Booking History
+            {isTeacherView ? "Booking requests" : "Your Booking History"}
           </h1>
           <p className="mt-3 text-sm text-slate-500 leading-relaxed max-w-md">
-            Manage requests you've sent as a student, cancel pending bookings
-            before tutor approval, and review your sessions.
+            {isTeacherView
+              ? "Review incoming booking requests, respond quickly, and share a meeting link once you accept a session."
+              : "Manage requests you've sent as a student, cancel pending bookings before tutor approval, and review your sessions."}
           </p>
         </div>
 
         {/* Counter Stats Layout */}
-        <div className="mb-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm grid grid-cols-2 gap-4 text-center divide-x divide-slate-100">
+        <div className="mb-8 mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm grid grid-cols-2 gap-4 text-center divide-x divide-slate-100">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
-              Pending
+              {isTeacherView ? "Incoming" : "Pending"}
             </p>
             <p className="mt-1 text-2xl font-bold text-slate-800">
               {pendingBookings.length}
@@ -122,7 +124,7 @@ export default function BookingsPage() {
           </div>
           <div>
             <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
-              Resolved
+              {isTeacherView ? "Responded" : "Resolved"}
             </p>
             <p className="mt-1 text-2xl font-bold text-slate-800">
               {resolvedBookings.length}
@@ -143,10 +145,12 @@ export default function BookingsPage() {
                 <AlertCircle className="h-5 w-5 text-slate-400" />
               </div>
               <h3 className="text-sm font-semibold text-slate-900">
-                No sessions recorded
+                {isTeacherView ? "No requests yet" : "No sessions recorded"}
               </h3>
               <p className="mt-1.5 text-xs text-slate-500">
-                Book a session from a tutor profile to view your active logs.
+                {isTeacherView
+                  ? "Incoming booking requests will appear here once students start reaching out."
+                  : "Book a session from a tutor profile to view your active logs."}
               </p>
             </div>
           ) : (

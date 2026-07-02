@@ -1,147 +1,208 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
-import Link from "next/link";
-
-import {
-  Search,
-  Sparkles,
-  Star,
-  Clock,
-  BookOpen,
-  FileText,
-  NotebookPen,
-  GraduationCap,
-  ArrowRight,
-} from "lucide-react";
 import toast from "react-hot-toast";
+import {
+  ArrowRight,
+  BookOpen,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  ExternalLink,
+  FileText,
+  GraduationCap,
+  NotebookPen,
+  Sparkles,
+  X,
+} from "lucide-react";
 
-const getDefaultBookingDate = () => {
-  const date = new Date();
-  date.setDate(date.getDate() + 3);
-  return date.toISOString().split("T")[0];
-};
+/* ------------------------------------------------------------------ */
+/*  Shared building blocks                                             */
+/* ------------------------------------------------------------------ */
+
+function EmptyState({ icon: Icon, title, description }) {
+  return (
+    <div className="flex min-h-[160px] flex-col items-center justify-center gap-2 px-6 py-8 text-center">
+      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400">
+        <Icon className="h-4.5 w-4.5" />
+      </div>
+      <p className="text-sm font-semibold text-slate-700">{title}</p>
+      <p className="text-xs text-slate-500">{description}</p>
+    </div>
+  );
+}
+
+function SectionCard({
+  icon: Icon,
+  iconClass,
+  title,
+  subtitle,
+  action,
+  children,
+}) {
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+        <div className="flex items-center gap-2.5">
+          <div
+            className={`flex h-8 w-8 items-center justify-center rounded-lg ${iconClass}`}
+          >
+            <Icon className="h-4 w-4" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
+            {subtitle && <p className="text-xs text-slate-500">{subtitle}</p>}
+          </div>
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Modal({ open, onClose, title, subtitle, children }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-6 backdrop-blur-[2px]">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+            {subtitle && (
+              <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="mt-5">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+const fieldClass =
+  "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 transition-colors focus:border-emerald-500 focus:bg-white focus:outline-none";
+
+/* ------------------------------------------------------------------ */
+/*  Page                                                                */
+/* ------------------------------------------------------------------ */
 
 export default function StudentDashboard() {
   const queryClient = useQueryClient();
-  const [subject, setSubject] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
   const [submissionUrls, setSubmissionUrls] = useState({});
   const [answerMap, setAnswerMap] = useState({});
+  const [activeAssignment, setActiveAssignment] = useState(null);
+  const [activeResource, setActiveResource] = useState(null);
+  // Session-only fallback: ids the student has submitted THIS session.
+  // If the API returns a per-assignment submission marker, that takes priority (see hasSubmitted below).
+  const [locallySubmitted, setLocallySubmitted] = useState(new Set());
+  // Quiz completion result. Seeded from the API if it tells us; otherwise session-only.
+  const [quizResult, setQuizResult] = useState(null);
 
   const sessionKey =
     typeof window !== "undefined"
       ? localStorage.getItem("token") || "guest"
       : "guest";
 
-  const marketplaceQuery = useQuery({
-    queryKey: ["rankedTutors", sessionKey, subject, maxPrice],
-    queryFn: async () => {
-      const params = {};
-      if (subject) params.subject = subject;
-      if (maxPrice) params.maxPrice = maxPrice;
-      const response = await api.get("/tutors/search", { params });
-      return response.data.data;
-    },
-  });
-
   const resourcesQuery = useQuery({
-    queryKey: ["studentResources", sessionKey, subject],
-    queryFn: async () => {
-      const params = {};
-      if (subject) params.subject = subject;
-      const response = await api.get("/resources", { params });
-      return response.data.data;
-    },
+    queryKey: ["studentResources", sessionKey],
+    queryFn: async () => (await api.get("/resources")).data.data,
   });
 
   const assignmentsQuery = useQuery({
     queryKey: ["studentAssignments", sessionKey],
-    queryFn: async () => {
-      const response = await api.get("/assignments");
-      return response.data.data;
-    },
+    queryFn: async () => (await api.get("/assignments")).data.data,
   });
 
   const quizzesQuery = useQuery({
-    queryKey: ["studentQuizzes", sessionKey],
-    queryFn: async () => {
-      const response = await api.get("/quizzes");
-      return response.data.data;
-    },
+    queryKey: ["studentWeeklyQuiz", sessionKey],
+    queryFn: async () => (await api.get("/quizzes/weekly")).data,
   });
 
   const bookingsQuery = useQuery({
     queryKey: ["studentBookings", sessionKey],
-    queryFn: async () => {
-      const response = await api.get("/bookings");
-      return response.data.data;
-    },
-  });
-
-  const bookingMutation = useMutation({
-    mutationFn: async ({ teacherId, date, startTime, endTime }) => {
-      const response = await api.post("/bookings", {
-        teacherId,
-        date,
-        startTime,
-        endTime,
-      });
-      return response.data;
-    },
-    onSuccess: () => {
-      toast.success("Booking request sent. Your tutor will review it shortly.");
-      queryClient.invalidateQueries(["studentBookings"]);
-    },
-    onError: (err) => {
-      toast.error(
-        err.response?.data?.error || "Booking request could not be placed.",
-      );
-    },
+    queryFn: async () => (await api.get("/bookings")).data.data,
   });
 
   const submitAssignmentMutation = useMutation({
-    mutationFn: async ({ assignmentId, fileUrl }) => {
-      const response = await api.post(`/assignments/${assignmentId}/submit`, {
-        fileUrl,
-      });
-      return response.data;
-    },
-    onSuccess: () => {
-      toast.success("Assignment submission recorded.");
+    mutationFn: async ({ assignmentId, fileUrl }) =>
+      (await api.post(`/assignments/${assignmentId}/submit`, { fileUrl })).data,
+    onSuccess: (data, variables) => {
+      toast.success(data.message || "Assignment submission recorded.");
+      setLocallySubmitted((prev) => new Set(prev).add(variables.assignmentId));
       queryClient.invalidateQueries(["studentAssignments"]);
     },
-    onError: (err) => {
-      toast.error(err.response?.data?.error || "Submission failed.");
-    },
+    onError: (err) =>
+      toast.error(err.response?.data?.error || "Submission failed."),
   });
 
   const submitQuizMutation = useMutation({
-    mutationFn: async ({ quizId, studentAnswers }) => {
-      const response = await api.post(`/quizzes/${quizId}/submit`, {
-        studentAnswers,
-      });
-      return response.data;
-    },
-    onSuccess: (data) => {
+    mutationFn: async ({ quizId, studentAnswers }) =>
+      (await api.post(`/quizzes/${quizId}/submit`, { studentAnswers })).data,
+    onSuccess: (data, variables) => {
       toast.success(data.message || "Quiz evaluated successfully.");
-      queryClient.invalidateQueries(["studentQuizzes"]);
+      setQuizResult({
+        score: data.score ?? data.results?.scorePercentage ?? null,
+        total:
+          data.total ?? data.results?.totalQuestions ?? variables.total ?? null,
+        message: data.message || null,
+      });
+      queryClient.invalidateQueries(["studentWeeklyQuiz"]);
     },
-    onError: (err) => {
-      toast.error(err.response?.data?.error || "Quiz submission failed.");
-    },
+    onError: (err) =>
+      toast.error(err.response?.data?.error || "Quiz submission failed."),
   });
 
-  const handleBookingRequest = (teacherId) => {
-    bookingMutation.mutate({
-      teacherId,
-      date: getDefaultBookingDate(),
-      startTime: "14:00",
-      endTime: "15:00",
+  const weeklyQuiz = quizzesQuery.data?.data;
+  const nextWeeklyQuizAt = quizzesQuery.data?.nextWeeklyQuizAt;
+
+  // If the backend already knows this student submitted this week's quiz, pick it up on load.
+  // Adjust these field names to whatever your /quizzes/weekly endpoint actually returns.
+  useEffect(() => {
+    const payload = quizzesQuery.data;
+    const alreadySubmitted =
+      payload?.alreadySubmitted ??
+      payload?.submitted ??
+      weeklyQuiz?.submitted ??
+      weeklyQuiz?.isSubmitted;
+    if (alreadySubmitted) {
+      setQuizResult({
+        score: payload?.score ?? weeklyQuiz?.score ?? null,
+        total: payload?.total ?? weeklyQuiz?.questions?.length ?? null,
+        message: null,
+      });
+    }
+  }, [quizzesQuery.data, weeklyQuiz]);
+
+  useEffect(() => {
+    if (!assignmentsQuery.data?.length) return;
+
+    setLocallySubmitted((prev) => {
+      const next = new Set(prev);
+      assignmentsQuery.data.forEach((assignment) => {
+        if (assignment.hasSubmitted || assignment.mySubmission) {
+          next.add(assignment._id);
+        }
+      });
+      return next;
     });
-  };
+  }, [assignmentsQuery.data]);
+
+  const hasSubmittedAssignment = (assignment) =>
+    locallySubmitted.has(assignment._id) ||
+    Boolean(assignment.mySubmission) ||
+    Boolean(assignment.hasSubmitted);
 
   const handleAssignmentSubmit = (assignmentId) => {
     const fileUrl = submissionUrls[assignmentId]?.trim();
@@ -152,16 +213,23 @@ export default function StudentDashboard() {
     submitAssignmentMutation.mutate({ assignmentId, fileUrl });
   };
 
-  const handleQuizSubmit = (quiz) => {
-    const selectedAnswers = quiz.questions.map((_, index) => {
-      const value = answerMap[quiz._id]?.[index];
-      return value ?? -1;
-    });
+  const handleQuizSubmit = () => {
+    if (!weeklyQuiz) return;
+    const selectedAnswers = weeklyQuiz.questions.map(
+      (_, index) => answerMap[weeklyQuiz._id]?.[index] ?? -1,
+    );
+    if (selectedAnswers.some((a) => a === -1)) {
+      toast.error("Please answer every question before submitting.");
+      return;
+    }
     submitQuizMutation.mutate({
-      quizId: quiz._id,
+      quizId: weeklyQuiz._id,
       studentAnswers: selectedAnswers,
+      total: weeklyQuiz.questions.length,
     });
   };
+
+  const bookings = bookingsQuery.data || [];
 
   return (
     <div className="min-h-screen bg-white">
@@ -169,28 +237,26 @@ export default function StudentDashboard() {
         {/* Header */}
         <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-slate-50/60 p-6 sm:p-8">
           <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-emerald-50" />
-
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
                 <GraduationCap className="h-3.5 w-3.5" /> Student dashboard
               </div>
               <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-900">
-                Your tutor marketplace and study workspace
+                Your study workspace
               </h1>
               <p className="mt-2 text-sm text-slate-500">
-                Find tutors, manage bookings, and work through assignments and
-                quizzes in one place.
+                Track bookings, work through assignments and quizzes, and get
+                help whenever you're stuck.
               </p>
             </div>
-
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl border border-slate-200 bg-white p-4">
                 <p className="text-xs uppercase tracking-wider text-slate-400">
                   Active bookings
                 </p>
                 <p className="mt-1 text-xl font-semibold text-slate-900">
-                  {bookingsQuery.data?.length || 0}
+                  {bookings.length}
                 </p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-white p-4">
@@ -198,268 +264,243 @@ export default function StudentDashboard() {
                   Study tools
                 </p>
                 <p className="mt-1 text-xl font-semibold text-slate-900">
-                  {(assignmentsQuery.data?.length || 0) +
-                    (quizzesQuery.data?.length || 0)}
+                  {(assignmentsQuery.data?.length || 0) + (weeklyQuiz ? 1 : 0)}
                 </p>
               </div>
             </div>
           </div>
         </section>
 
-        {/* AI Study Assistant promo */}
-        <Link
-          href="/ai-study"
-          className="group flex items-center justify-between gap-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-6 transition hover:border-emerald-300 hover:bg-emerald-50"
-        >
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
-              <Sparkles size={22} />
-            </div>
-            <div>
-              <p className="font-semibold text-slate-900">
-                Stuck on something? Ask the AI Study Assistant.
-              </p>
-              <p className="text-sm text-slate-500">
-                Get guided hints on any problem, available anytime between
-                tutoring sessions.
-              </p>
-            </div>
-          </div>
-          <ArrowRight className="h-5 w-5 shrink-0 text-emerald-600 transition group-hover:translate-x-1" />
-        </Link>
-
-        <div className="grid grid-cols-1 gap-8 xl:grid-cols-[1.2fr_0.8fr]">
-          <div className="space-y-8">
-            {/* Tutor marketplace */}
-            <section className="rounded-2xl border border-slate-200 bg-white p-6">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    Find the right tutor
-                  </h2>
-                  <p className="text-sm text-slate-500">
-                    Tutors are ranked using the recommendation engine.
-                  </p>
-                </div>
-                <div className="grid w-full grid-cols-1 gap-3 sm:w-auto sm:grid-cols-2">
-                  <label className="relative block">
-                    <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                    <input
-                      value={subject}
-                      onChange={(e) => setSubject(e.target.value)}
-                      placeholder="Subject"
-                      className="w-full rounded-lg border border-slate-300 py-2.5 pl-10 pr-3 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none"
-                    />
-                  </label>
-                  <input
-                    value={maxPrice}
-                    onChange={(e) => setMaxPrice(e.target.value)}
-                    placeholder="Max Rs/hr"
-                    type="number"
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none"
-                  />
-                </div>
+        {/* CTA row — find a tutor + AI study assistant, side by side so neither dominates */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Link
+            href="/tutors"
+            className="group flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition-colors hover:border-emerald-300 hover:bg-slate-50"
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white">
+                <GraduationCap className="h-5 w-5" />
               </div>
-
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
-                {marketplaceQuery.isLoading && (
-                  <p className="text-sm text-slate-400">
-                    Loading tutor recommendations…
-                  </p>
-                )}
-                {marketplaceQuery.data?.map((tutor) => (
-                  <div
-                    key={tutor.teacherId}
-                    className="rounded-xl border border-slate-200 bg-slate-50/60 p-4"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="font-semibold text-slate-900">
-                          {tutor.name}
-                        </h3>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {tutor.subjects?.join(", ") || "General tutoring"}
-                        </p>
-                      </div>
-                      <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
-                        {tutor.recommendationScore?.toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="mt-3 flex items-center gap-1 text-sm text-amber-500">
-                      <Star className="h-4 w-4 fill-current" />{" "}
-                      <span className="text-slate-600">
-                        {tutor.averageRating || 0} •{" "}
-                        {tutor.experienceYears || 0} yrs
-                      </span>
-                    </div>
-                    <div className="mt-4 flex items-center justify-between">
-                      <div>
-                        <p className="text-xs uppercase tracking-wider text-slate-400">
-                          Rate
-                        </p>
-                        <p className="text-lg font-semibold text-slate-900">
-                          Rs {tutor.hourlyRate}/hr
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => handleBookingRequest(tutor.teacherId)}
-                        className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
-                      >
-                        Request slot
-                      </button>
-                    </div>
-                  </div>
-                ))}
+              <div>
+                <p className="font-semibold text-slate-900">Find a tutor</p>
+                <p className="text-sm text-slate-500">
+                  Browse ranked tutors by subject and rate.
+                </p>
               </div>
-            </section>
+            </div>
+            <ArrowRight className="h-5 w-5 shrink-0 text-slate-400 transition-transform group-hover:translate-x-1 group-hover:text-slate-600" />
+          </Link>
 
-            {/* Resources & Assignments */}
-            <section className="grid gap-6 lg:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-white p-6">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="h-5 w-5 text-emerald-600" />
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    Learning resources
-                  </h2>
-                </div>
-                <div className="mt-4 space-y-3">
-                  {resourcesQuery.data?.map((resource) => (
-                    <div
+          <Link
+            href="/ai-study"
+            className="group flex items-center justify-between gap-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5 transition-colors hover:border-emerald-300 hover:bg-emerald-50"
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-900">
+                  Ask the AI Study Assistant
+                </p>
+                <p className="text-sm text-slate-500">
+                  Guided hints anytime between sessions.
+                </p>
+              </div>
+            </div>
+            <ArrowRight className="h-5 w-5 shrink-0 text-emerald-600 transition-transform group-hover:translate-x-1" />
+          </Link>
+        </div>
+
+        <div className="grid gap-8 lg:grid-cols-2 lg:divide-x lg:divide-slate-200">
+          {/* ---------------- LEFT COLUMN ---------------- */}
+          <div className="space-y-6 lg:pr-8">
+            {/* Resources — compact list */}
+            <SectionCard
+              icon={BookOpen}
+              iconClass="bg-emerald-50 text-emerald-600"
+              title="Learning resources"
+              subtitle={`${resourcesQuery.data?.length ?? 0} shared by your tutors`}
+            >
+              {resourcesQuery.isLoading ? (
+                <p className="px-5 py-6 text-sm text-slate-400">
+                  Loading resources…
+                </p>
+              ) : !resourcesQuery.data?.length ? (
+                <EmptyState
+                  icon={BookOpen}
+                  title="No resources yet"
+                  description="Your tutor's shared materials will show up here."
+                />
+              ) : (
+                <div className="max-h-[280px] space-y-2 overflow-y-auto p-4">
+                  {resourcesQuery.data.map((resource) => (
+                    <button
                       key={resource._id}
-                      className="rounded-xl border border-slate-200 bg-slate-50/60 p-3"
+                      onClick={() => setActiveResource(resource)}
+                      className="flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/60 p-3 text-left transition-colors hover:border-emerald-200 hover:bg-emerald-50/50"
                     >
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="font-medium text-slate-900">
-                            {resource.title}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            {resource.subject} •{" "}
-                            {resource.teacherId?.name || "Tutor"}
-                          </p>
-                        </div>
-                        <span className="rounded-full border border-slate-200 px-2 py-1 text-[10px] uppercase tracking-wider text-slate-500">
-                          {resource.fileType || "PDF"}
-                        </span>
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-600">
+                        <FileText className="h-4 w-4" />
                       </div>
-                      <p className="mt-2 text-sm text-slate-500 line-clamp-3">
-                        {resource.aiSummary}
-                      </p>
-                    </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-slate-900">
+                          {resource.title}
+                        </p>
+                        <p className="truncate text-xs text-slate-500">
+                          {resource.teacherId?.name || "Tutor"}
+                        </p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
+                    </button>
                   ))}
                 </div>
-              </div>
+              )}
+            </SectionCard>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-6">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-indigo-600" />
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    Assignments
-                  </h2>
-                </div>
-                <div className="mt-4 space-y-3">
-                  {assignmentsQuery.data?.map((assignment) => (
-                    <div
-                      key={assignment._id}
-                      className="rounded-xl border border-slate-200 bg-slate-50/60 p-3"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="font-medium text-slate-900">
+            {/* Assignments — compact list, full detail + submit lives in the modal */}
+            <SectionCard
+              icon={FileText}
+              iconClass="bg-indigo-50 text-indigo-600"
+              title="Assignments"
+              subtitle={`${assignmentsQuery.data?.length ?? 0} assigned to you`}
+            >
+              {assignmentsQuery.isLoading ? (
+                <p className="px-5 py-6 text-sm text-slate-400">
+                  Loading assignments…
+                </p>
+              ) : !assignmentsQuery.data?.length ? (
+                <EmptyState
+                  icon={FileText}
+                  title="No assignments yet"
+                  description="New tasks from your tutor will appear here."
+                />
+              ) : (
+                <div className="max-h-[280px] space-y-2 overflow-y-auto p-4">
+                  {assignmentsQuery.data.map((assignment) => {
+                    const submitted = hasSubmittedAssignment(assignment);
+                    return (
+                      <button
+                        key={assignment._id}
+                        onClick={() => setActiveAssignment(assignment)}
+                        className="flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/60 p-3 text-left transition-colors hover:border-indigo-200 hover:bg-indigo-50/50"
+                      >
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-600">
+                          <FileText className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-slate-900">
                             {assignment.title}
                           </p>
-                          <p className="text-xs text-slate-500">
-                            {assignment.subject} • Due{" "}
+                          <p className="truncate text-xs text-slate-500">
+                            {assignment.subject} &middot; Due{" "}
                             {new Date(assignment.dueDate).toLocaleDateString()}
                           </p>
                         </div>
-                        <span className="rounded-full bg-indigo-50 px-2 py-1 text-[10px] uppercase tracking-wider text-indigo-600">
-                          {assignment.submissions?.length || 0} submits
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm text-slate-500">
-                        {assignment.instructions}
-                      </p>
-                      <div className="mt-3 flex gap-2">
-                        <input
-                          placeholder="Submission URL"
-                          value={submissionUrls[assignment._id] || ""}
-                          onChange={(e) =>
-                            setSubmissionUrls((prev) => ({
-                              ...prev,
-                              [assignment._id]: e.target.value,
-                            }))
-                          }
-                          className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none"
-                        />
-                        <button
-                          onClick={() => handleAssignmentSubmit(assignment._id)}
-                          className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
+                        <span
+                          className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                            submitted
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                              : "border-amber-200 bg-amber-50 text-amber-700"
+                          }`}
                         >
-                          Submit
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                          {submitted ? "Submitted" : "Pending"}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
-              </div>
-            </section>
+              )}
+            </SectionCard>
 
-            {/* Quizzes */}
-            <section className="rounded-2xl border border-slate-200 bg-white p-6">
-              <div className="flex items-center gap-2">
-                <NotebookPen className="h-5 w-5 text-amber-500" />
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Quizzes & practice
-                </h2>
-              </div>
-              <div className="mt-4 space-y-4">
-                {quizzesQuery.data?.map((quiz) => (
-                  <div
-                    key={quiz._id}
-                    className="rounded-xl border border-slate-200 bg-slate-50/60 p-4"
-                  >
+            {/* Weekly quiz */}
+            <SectionCard
+              icon={NotebookPen}
+              iconClass="bg-amber-50 text-amber-600"
+              title="Weekly AI quiz"
+              subtitle="One practice quiz, refreshed weekly"
+            >
+              <div className="p-5">
+                {quizzesQuery.isLoading && (
+                  <p className="text-sm text-slate-400">
+                    Preparing your weekly practice quiz…
+                  </p>
+                )}
+
+                {quizzesQuery.isError && (
+                  <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+                    {quizzesQuery.error?.response?.data?.error ||
+                      "Your weekly quiz is not available yet."}
+                  </p>
+                )}
+
+                {weeklyQuiz && quizResult && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                      <p className="font-semibold text-slate-900">
+                        Quiz completed
+                      </p>
+                    </div>
+                    <p className="mt-2 text-sm text-slate-600">
+                      {quizResult.message ||
+                        (quizResult.score != null && quizResult.total != null
+                          ? `You scored ${quizResult.score} out of ${quizResult.total}.`
+                          : "Your answers have been submitted and evaluated.")}
+                    </p>
+                    {nextWeeklyQuizAt && (
+                      <p className="mt-2 text-xs text-slate-500">
+                        Next quiz opens{" "}
+                        {new Date(nextWeeklyQuizAt).toLocaleString()}.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {weeklyQuiz && !quizResult && (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="font-medium text-slate-900">
-                          {quiz.title}
+                          {weeklyQuiz.title}
                         </p>
                         <p className="text-xs text-slate-500">
-                          {quiz.subject} • {quiz.teacherId?.name || "Tutor"}
+                          {weeklyQuiz.subject} &middot; AI generated
                         </p>
                       </div>
                       <span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] uppercase tracking-wider text-amber-600">
-                        {quiz.questions?.length || 0} Qs
+                        {weeklyQuiz.questions?.length || 0} Qs
                       </span>
                     </div>
 
                     <div className="mt-3 space-y-2">
-                      {quiz.questions?.map((question, questionIndex) => (
+                      {weeklyQuiz.questions?.map((question, questionIndex) => (
                         <div
-                          key={`${quiz._id}-${questionIndex}`}
+                          key={`${weeklyQuiz._id}-${questionIndex}`}
                           className="rounded-lg border border-slate-200 bg-white p-3"
                         >
                           <p className="text-sm text-slate-700">
-                            {question.question}
+                            {question.questionText || question.question}
                           </p>
                           <div className="mt-2 grid gap-2">
                             {question.options?.map((option, optionIndex) => (
                               <label
-                                key={`${quiz._id}-${questionIndex}-${optionIndex}`}
+                                key={`${weeklyQuiz._id}-${questionIndex}-${optionIndex}`}
                                 className="flex items-center gap-2 text-sm text-slate-600"
                               >
                                 <input
                                   type="radio"
-                                  name={`${quiz._id}-${questionIndex}`}
+                                  name={`${weeklyQuiz._id}-${questionIndex}`}
                                   checked={
-                                    (answerMap[quiz._id]?.[questionIndex] ??
-                                      -1) === optionIndex
+                                    (answerMap[weeklyQuiz._id]?.[
+                                      questionIndex
+                                    ] ?? -1) === optionIndex
                                   }
                                   onChange={() =>
                                     setAnswerMap((prev) => ({
                                       ...prev,
-                                      [quiz._id]: {
-                                        ...(prev[quiz._id] || {}),
+                                      [weeklyQuiz._id]: {
+                                        ...(prev[weeklyQuiz._id] || {}),
                                         [questionIndex]: optionIndex,
                                       },
                                     }))
@@ -475,70 +516,167 @@ export default function StudentDashboard() {
                     </div>
 
                     <button
-                      onClick={() => handleQuizSubmit(quiz)}
-                      className="mt-4 rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-amber-400"
+                      onClick={handleQuizSubmit}
+                      disabled={submitQuizMutation.isPending}
+                      className="mt-4 rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-400 disabled:opacity-50"
                     >
-                      Submit quiz
+                      {submitQuizMutation.isPending
+                        ? "Submitting..."
+                        : "Submit quiz"}
                     </button>
                   </div>
-                ))}
-              </div>
-            </section>
-          </div>
-
-          {/* My bookings */}
-          <div className="space-y-8">
-            <section className="rounded-2xl border border-slate-200 bg-white p-6">
-              <div className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-emerald-600" />
-                <h2 className="text-lg font-semibold text-slate-900">
-                  My bookings
-                </h2>
-              </div>
-              <div className="mt-4 space-y-3">
-                {bookingsQuery.data?.map((booking) => (
-                  <div
-                    key={booking._id}
-                    className="rounded-xl border border-slate-200 bg-slate-50/60 p-3"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="font-medium text-slate-900">
-                          {booking.teacherId?.name || "Tutor"}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {booking.date} • {booking.startTime} -{" "}
-                          {booking.endTime}
-                        </p>
-                      </div>
-                      <span
-                        className={`rounded-full px-2 py-1 text-[10px] uppercase tracking-wider ${
-                          booking.status === "accepted"
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "bg-amber-50 text-amber-700"
-                        }`}
-                      >
-                        {booking.status}
-                      </span>
-                    </div>
-                    {booking.meetingLink && (
-                      <p className="mt-2 text-xs text-slate-400">
-                        Meeting: {booking.meetingLink}
-                      </p>
-                    )}
-                  </div>
-                ))}
-
-                {bookingsQuery.data?.length === 0 && (
-                  <p className="text-sm text-slate-400">
-                    No bookings yet. Find a tutor above to get started.
-                  </p>
                 )}
               </div>
-            </section>
+            </SectionCard>
+          </div>
+
+          {/* ---------------- RIGHT COLUMN ---------------- */}
+          <div className="space-y-6 lg:sticky lg:top-6 lg:h-fit lg:pl-8">
+            <SectionCard
+              icon={Clock}
+              iconClass="bg-emerald-50 text-emerald-600"
+              title="My bookings"
+              subtitle={`${bookings.length} total`}
+            >
+              {bookingsQuery.isLoading ? (
+                <p className="px-5 py-6 text-sm text-slate-400">
+                  Loading bookings…
+                </p>
+              ) : !bookings.length ? (
+                <EmptyState
+                  icon={Clock}
+                  title="No bookings yet"
+                  description="Find a tutor to request your first session."
+                />
+              ) : (
+                <div className="max-h-[480px] min-h-[220px] space-y-2 overflow-y-auto p-4">
+                  {bookings.map((booking) => (
+                    <div
+                      key={booking._id}
+                      className="rounded-xl border border-slate-100 bg-slate-50/60 p-3"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-900">
+                            {booking.teacherId?.name || "Tutor"}
+                          </p>
+                          <p className="mt-0.5 text-xs text-slate-500">
+                            {booking.date} &middot; {booking.startTime}–
+                            {booking.endTime}
+                          </p>
+                        </div>
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-wider ${
+                            booking.status === "accepted"
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-amber-50 text-amber-700"
+                          }`}
+                        >
+                          {booking.status}
+                        </span>
+                      </div>
+                      {booking.meetingLink && (
+                        <a
+                          href={booking.meetingLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:underline"
+                        >
+                          Join meeting <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </SectionCard>
           </div>
         </div>
       </main>
+
+      {/* ---------------- Resource modal ---------------- */}
+      <Modal
+        open={!!activeResource}
+        onClose={() => setActiveResource(null)}
+        title={activeResource?.title}
+        subtitle={activeResource?.teacherId?.name || "Tutor"}
+      >
+        {activeResource && (
+          <div className="space-y-4">
+            <span className="inline-flex rounded-full border border-slate-200 px-2 py-1 text-[10px] uppercase tracking-wider text-slate-500">
+              {(activeResource.fileType || "file").split("/").pop()}
+            </span>
+            <p className="text-sm leading-6 text-slate-600">
+              {activeResource.aiSummary ||
+                "No summary available for this resource."}
+            </p>
+            {activeResource.fileUrl && (
+              <a
+                href={activeResource.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-500"
+              >
+                Open resource <ExternalLink className="h-4 w-4" />
+              </a>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      {/* ---------------- Assignment modal (view + submit) ---------------- */}
+      <Modal
+        open={!!activeAssignment}
+        onClose={() => setActiveAssignment(null)}
+        title={activeAssignment?.title}
+        subtitle={
+          activeAssignment
+            ? `${activeAssignment.subject} · Due ${new Date(activeAssignment.dueDate).toLocaleDateString()}`
+            : ""
+        }
+      >
+        {activeAssignment && (
+          <div className="space-y-5">
+            <p className="text-sm leading-6 text-slate-600">
+              {activeAssignment.instructions ||
+                "No additional instructions provided."}
+            </p>
+
+            {hasSubmittedAssignment(activeAssignment) ? (
+              <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 text-sm font-medium text-emerald-700">
+                <CheckCircle2 className="h-4 w-4" /> Submission recorded for
+                this assignment.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-slate-700">
+                  Submission URL
+                  <input
+                    placeholder="https://drive.google.com/..."
+                    value={submissionUrls[activeAssignment._id] || ""}
+                    onChange={(e) =>
+                      setSubmissionUrls((prev) => ({
+                        ...prev,
+                        [activeAssignment._id]: e.target.value,
+                      }))
+                    }
+                    className={`mt-2 ${fieldClass}`}
+                  />
+                </label>
+                <button
+                  onClick={() => handleAssignmentSubmit(activeAssignment._id)}
+                  disabled={submitAssignmentMutation.isPending}
+                  className="w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-500 disabled:opacity-50"
+                >
+                  {submitAssignmentMutation.isPending
+                    ? "Submitting..."
+                    : "Submit assignment"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

@@ -8,6 +8,8 @@ import api from "@/lib/api";
 import toast from "react-hot-toast";
 import {
   ArrowRight,
+  Eye,
+  EyeOff,
   GraduationCap,
   KeyRound,
   Mail,
@@ -23,6 +25,7 @@ export default function RegisterPage() {
     password: "",
     role: "student",
   });
+  const [showPassword, setShowPassword] = useState(false);
 
   const registerMutation = useMutation({
     mutationFn: async (payload) => {
@@ -76,7 +79,7 @@ export default function RegisterPage() {
               <User className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="John Doe"
+                placeholder="Rajesh Paudel"
                 className="w-full rounded-lg border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm text-slate-950 transition-colors focus:border-emerald-500 focus:outline-none"
                 value={formData.name}
                 onChange={(event) =>
@@ -109,16 +112,28 @@ export default function RegisterPage() {
               Password
             </label>
             <div className="relative">
-              <KeyRound className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+              <KeyRound className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="Password"
-                className="w-full rounded-lg border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm text-slate-950 transition-colors focus:border-emerald-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-200 bg-white py-3 pl-11 pr-10 text-sm text-slate-950 transition-colors focus:border-emerald-500 focus:outline-none"
                 value={formData.password}
                 onChange={(event) =>
                   setFormData({ ...formData, password: event.target.value })
                 }
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword((value) => !value)}
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 transition-colors hover:text-slate-600 focus:outline-none"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
             </div>
           </div>
 
