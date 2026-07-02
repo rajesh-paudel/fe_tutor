@@ -17,7 +17,9 @@ import {
   FileText,
   GraduationCap,
   Inbox,
+  Mail,
   Sparkles,
+  UserCircle,
   Users,
   X,
   XCircle,
@@ -114,6 +116,55 @@ function StatusPill({ status }) {
     >
       {status}
     </span>
+  );
+}
+
+function AccountCard({ user, role }) {
+  const name = user?.name || "Your account";
+  const initials = name
+    .trim()
+    .split(" ")
+    .map((part) => part[0] || "")
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center gap-3">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-emerald-50 text-base font-semibold text-emerald-700">
+          {user?.profileImage ? (
+            <img
+              src={user.profileImage}
+              alt={name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            initials
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-slate-900">
+            {name}
+          </p>
+          <p className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-slate-500">
+            <Mail className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{user?.email || "Email not added"}</span>
+          </p>
+          <span className="mt-2 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-700">
+            <GraduationCap className="h-3 w-3" />
+            {role || "teacher"}
+          </span>
+        </div>
+      </div>
+      <Link
+        href="/profile"
+        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-700"
+      >
+        <UserCircle className="h-4 w-4" />
+        View profile
+      </Link>
+    </div>
   );
 }
 
@@ -224,6 +275,11 @@ export default function TeacherDashboard() {
   const resourcesQuery = useQuery({
     queryKey: ["teacherResources", sessionKey],
     queryFn: async () => (await api.get("/resources")).data.data,
+  });
+
+  const profileQuery = useQuery({
+    queryKey: ["teacherDashboardProfile", sessionKey],
+    queryFn: async () => (await api.get("/profile/me")).data,
   });
 
   const contentDetailQuery = useQuery({
@@ -426,6 +482,10 @@ export default function TeacherDashboard() {
     assignmentsQuery.isLoading ||
     resourcesQuery.isLoading;
 
+  const accountProfile = profileQuery.data?.data;
+  const accountUser = accountProfile?.userId;
+  const accountRole = profileQuery.data?.role || "teacher";
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
@@ -438,17 +498,22 @@ export default function TeacherDashboard() {
     <div className="min-h-screen bg-slate-50">
       <main className="mx-auto max-w-7xl space-y-8 px-4 py-10 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="border-b border-slate-200 pb-6">
-          <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-emerald-600">
-            <Award className="h-4 w-4" /> Educator workspace control center
+        <div className="flex flex-col gap-5 border-b border-slate-200 pb-6 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-emerald-600">
+              <Award className="h-4 w-4" /> Educator workspace control center
+            </div>
+            <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950">
+              Run your tutor business from one clean workspace
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm text-slate-500">
+              Publish assignments and resources, manage booking requests, and
+              keep track of your enrolled students.
+            </p>
           </div>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950">
-            Run your tutor business from one clean workspace
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-slate-500">
-            Publish assignments and resources, manage booking requests, and keep
-            track of your enrolled students.
-          </p>
+          <div className="w-full lg:max-w-sm">
+            <AccountCard user={accountUser} role={accountRole} />
+          </div>
         </div>
 
         <div className="grid gap-8 lg:grid-cols-2 lg:divide-x lg:divide-slate-200">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
@@ -11,8 +11,6 @@ import {
   X,
   Sparkles,
   CalendarRange,
-  UserCircle2,
-  ChevronDown,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -22,25 +20,18 @@ export default function Navbar() {
   const [token, setToken] = useState(null);
   const [role, setRole] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [signOutDialogOpen, setSignOutDialogOpen] = useState(false);
-  const userMenuRef = useRef(null);
 
   useEffect(() => {
-    setToken(localStorage.getItem("token"));
-    setRole(localStorage.getItem("userRole"));
-  }, [pathname]);
-
-  // Close user dropdown when clicking outside it
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
-        setUserMenuOpen(false);
-      }
+    function syncAuthState() {
+      setToken(localStorage.getItem("token"));
+      setRole(localStorage.getItem("userRole"));
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+
+    queueMicrotask(syncAuthState);
+    window.addEventListener("auth:changed", syncAuthState);
+    return () => window.removeEventListener("auth:changed", syncAuthState);
+  }, [pathname]);
 
   function confirmSignOut() {
     localStorage.clear();
@@ -48,20 +39,10 @@ export default function Navbar() {
     setToken(null);
     setRole(null);
     setSignOutDialogOpen(false);
-    setUserMenuOpen(false);
     setIsOpen(false);
     toast.success("Signed out successfully.");
     router.push("/");
   }
-
-  const userInitial = (
-    typeof window !== "undefined" && localStorage.getItem("userName")
-      ? localStorage.getItem("userName")
-      : "U"
-  )
-    .trim()
-    .charAt(0)
-    .toUpperCase();
 
   return (
     <>
@@ -104,6 +85,12 @@ export default function Navbar() {
                   >
                     <CalendarRange className="h-4 w-4" /> Bookings
                   </Link>
+                  <Link
+                    href="/dashboard"
+                    className={`flex items-center gap-1 transition-colors ${pathname.startsWith("/dashboard") ? "text-emerald-700 font-medium" : "text-slate-600 hover:text-slate-950"}`}
+                  >
+                    <LayoutDashboard className="h-4 w-4" /> Dashboard
+                  </Link>
                   {role === "student" && (
                     <Link
                       href="/ai-study"
@@ -132,51 +119,13 @@ export default function Navbar() {
             {/* Right side actions */}
             <div className="hidden md:flex items-center gap-3">
               {token ? (
-                <div className="relative" ref={userMenuRef}>
-                  <button
-                    onClick={() => setUserMenuOpen((prev) => !prev)}
-                    className="flex items-center gap-2 rounded-full border border-slate-200 bg-white py-1 pl-1 pr-3 transition hover:border-slate-300"
-                  >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700">
-                      {userInitial}
-                    </div>
-                    <ChevronDown
-                      className={`h-4 w-4 text-slate-400 transition-transform ${userMenuOpen ? "rotate-180" : ""}`}
-                    />
-                  </button>
-
-                  {userMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white py-1.5 shadow-lg shadow-slate-200/60">
-                      <Link
-                        href="/dashboard"
-                        onClick={() => setUserMenuOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
-                      >
-                        <LayoutDashboard className="h-4 w-4 text-slate-400" />
-                        Dashboard
-                      </Link>
-                      <Link
-                        href="/profile"
-                        onClick={() => setUserMenuOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
-                      >
-                        <UserCircle2 className="h-4 w-4 text-slate-400" />
-                        Profile
-                      </Link>
-                      <div className="my-1.5 border-t border-slate-100" />
-                      <button
-                        onClick={() => {
-                          setUserMenuOpen(false);
-                          setSignOutDialogOpen(true);
-                        }}
-                        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-medium text-red-600 hover:bg-red-50"
-                      >
-                        <LogOut className="h-4 w-4" />
-                        Sign out
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <button
+                  onClick={() => setSignOutDialogOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-xs font-bold text-red-600 transition-colors hover:border-red-300 hover:bg-red-100"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </button>
               ) : (
                 <>
                   <Link
@@ -197,11 +146,6 @@ export default function Navbar() {
 
             {/* Mobile hamburger */}
             <div className="md:hidden flex items-center gap-3">
-              {token && (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700">
-                  {userInitial}
-                </div>
-              )}
               <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="text-slate-600 hover:text-slate-950 focus:outline-none"
@@ -260,21 +204,24 @@ export default function Navbar() {
                   Bookings
                 </Link>
                 <Link
-                  href="/profile"
-                  onClick={() => setIsOpen(false)}
-                  className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-100"
-                >
-                  Profile
-                </Link>
-                <Link
                   href="/dashboard"
                   onClick={() => setIsOpen(false)}
                   className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-100"
                 >
                   Dashboard
                 </Link>
+                <Link
+                  href="/profile"
+                  onClick={() => setIsOpen(false)}
+                  className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-100"
+                >
+                  Profile
+                </Link>
                 <button
-                  onClick={() => setSignOutDialogOpen(true)}
+                  onClick={() => {
+                    setIsOpen(false);
+                    setSignOutDialogOpen(true);
+                  }}
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-base font-medium text-red-600 hover:bg-red-50"
                 >
                   <LogOut className="h-4 w-4" /> Sign Out
@@ -314,7 +261,7 @@ export default function Navbar() {
               Sign out of EduSphere?
             </h2>
             <p className="mt-2 text-sm text-slate-500">
-              You'll need to sign in again to access your dashboard and
+              You&apos;ll need to sign in again to access your dashboard and
               bookings.
             </p>
 

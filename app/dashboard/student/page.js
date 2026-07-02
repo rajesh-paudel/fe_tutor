@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
@@ -14,8 +14,10 @@ import {
   ExternalLink,
   FileText,
   GraduationCap,
+  Mail,
   NotebookPen,
   Sparkles,
+  UserCircle,
   X,
 } from "lucide-react";
 
@@ -91,6 +93,55 @@ function Modal({ open, onClose, title, subtitle, children }) {
   );
 }
 
+function AccountCard({ user, role }) {
+  const name = user?.name || "Your account";
+  const initials = name
+    .trim()
+    .split(" ")
+    .map((part) => part[0] || "")
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  return (
+    <div className="flex h-full flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center gap-3">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-sky-50 text-base font-semibold text-sky-700">
+          {user?.profileImage ? (
+            <img
+              src={user.profileImage}
+              alt={name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            initials
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-slate-900">
+            {name}
+          </p>
+          <p className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-slate-500">
+            <Mail className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{user?.email || "Email not added"}</span>
+          </p>
+          <span className="mt-2 inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-700">
+            <BookOpen className="h-3 w-3" />
+            {role || "student"}
+          </span>
+        </div>
+      </div>
+      <Link
+        href="/profile"
+        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-700"
+      >
+        <UserCircle className="h-4 w-4" />
+        View profile
+      </Link>
+    </div>
+  );
+}
+
 const fieldClass =
   "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 transition-colors focus:border-emerald-500 focus:bg-white focus:outline-none";
 
@@ -135,6 +186,11 @@ export default function StudentDashboard() {
     queryFn: async () => (await api.get("/bookings")).data.data,
   });
 
+  const profileQuery = useQuery({
+    queryKey: ["studentDashboardProfile", sessionKey],
+    queryFn: async () => (await api.get("/profile/me")).data,
+  });
+
   const submitAssignmentMutation = useMutation({
     mutationFn: async ({ assignmentId, fileUrl }) =>
       (await api.post(`/assignments/${assignmentId}/submit`, { fileUrl })).data,
@@ -167,37 +223,21 @@ export default function StudentDashboard() {
   const weeklyQuiz = quizzesQuery.data?.data;
   const nextWeeklyQuizAt = quizzesQuery.data?.nextWeeklyQuizAt;
 
-  // If the backend already knows this student submitted this week's quiz, pick it up on load.
-  // Adjust these field names to whatever your /quizzes/weekly endpoint actually returns.
-  useEffect(() => {
-    const payload = quizzesQuery.data;
-    const alreadySubmitted =
-      payload?.alreadySubmitted ??
-      payload?.submitted ??
-      weeklyQuiz?.submitted ??
-      weeklyQuiz?.isSubmitted;
-    if (alreadySubmitted) {
-      setQuizResult({
-        score: payload?.score ?? weeklyQuiz?.score ?? null,
-        total: payload?.total ?? weeklyQuiz?.questions?.length ?? null,
-        message: null,
-      });
-    }
-  }, [quizzesQuery.data, weeklyQuiz]);
-
-  useEffect(() => {
-    if (!assignmentsQuery.data?.length) return;
-
-    setLocallySubmitted((prev) => {
-      const next = new Set(prev);
-      assignmentsQuery.data.forEach((assignment) => {
-        if (assignment.hasSubmitted || assignment.mySubmission) {
-          next.add(assignment._id);
+  const alreadySubmittedQuiz =
+    quizzesQuery.data?.alreadySubmitted ??
+    quizzesQuery.data?.submitted ??
+    weeklyQuiz?.submitted ??
+    weeklyQuiz?.isSubmitted;
+  const resolvedQuizResult =
+    quizResult ||
+    (alreadySubmittedQuiz
+      ? {
+          score: quizzesQuery.data?.score ?? weeklyQuiz?.score ?? null,
+          total:
+            quizzesQuery.data?.total ?? weeklyQuiz?.questions?.length ?? null,
+          message: null,
         }
-      });
-      return next;
-    });
-  }, [assignmentsQuery.data]);
+      : null);
 
   const hasSubmittedAssignment = (assignment) =>
     locallySubmitted.has(assignment._id) ||
@@ -230,14 +270,37 @@ export default function StudentDashboard() {
   };
 
   const bookings = bookingsQuery.data || [];
+  const accountProfile = profileQuery.data?.data;
+  const accountUser = accountProfile?.userId;
+  const accountRole = profileQuery.data?.role || "student";
 
   return (
     <div className="min-h-screen bg-white">
       <main className="mx-auto w-full max-w-7xl space-y-8 px-4 py-10 sm:px-6 lg:px-8">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_1fr_1fr]">
+          <AccountCard user={accountUser} role={accountRole} />
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-xs uppercase tracking-wider text-slate-400">
+              Active bookings
+            </p>
+            <p className="mt-2 text-2xl font-semibold text-slate-900">
+              {bookings.length}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-xs uppercase tracking-wider text-slate-400">
+              Study tools
+            </p>
+            <p className="mt-2 text-2xl font-semibold text-slate-900">
+              {(assignmentsQuery.data?.length || 0) + (weeklyQuiz ? 1 : 0)}
+            </p>
+          </div>
+        </div>
+
         {/* Header */}
         <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-slate-50/60 p-6 sm:p-8">
           <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-emerald-50" />
-          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="relative max-w-2xl">
             <div className="max-w-2xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
                 <GraduationCap className="h-3.5 w-3.5" /> Student dashboard
@@ -247,26 +310,8 @@ export default function StudentDashboard() {
               </h1>
               <p className="mt-2 text-sm text-slate-500">
                 Track bookings, work through assignments and quizzes, and get
-                help whenever you're stuck.
+                help whenever you&apos;re stuck.
               </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
-                <p className="text-xs uppercase tracking-wider text-slate-400">
-                  Active bookings
-                </p>
-                <p className="mt-1 text-xl font-semibold text-slate-900">
-                  {bookings.length}
-                </p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
-                <p className="text-xs uppercase tracking-wider text-slate-400">
-                  Study tools
-                </p>
-                <p className="mt-1 text-xl font-semibold text-slate-900">
-                  {(assignmentsQuery.data?.length || 0) + (weeklyQuiz ? 1 : 0)}
-                </p>
-              </div>
             </div>
           </div>
         </section>
@@ -434,7 +479,7 @@ export default function StudentDashboard() {
                   </p>
                 )}
 
-                {weeklyQuiz && quizResult && (
+                {weeklyQuiz && resolvedQuizResult && (
                   <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="h-5 w-5 text-emerald-600" />
@@ -443,9 +488,10 @@ export default function StudentDashboard() {
                       </p>
                     </div>
                     <p className="mt-2 text-sm text-slate-600">
-                      {quizResult.message ||
-                        (quizResult.score != null && quizResult.total != null
-                          ? `You scored ${quizResult.score} out of ${quizResult.total}.`
+                      {resolvedQuizResult.message ||
+                        (resolvedQuizResult.score != null &&
+                        resolvedQuizResult.total != null
+                          ? `You scored ${resolvedQuizResult.score} out of ${resolvedQuizResult.total}.`
                           : "Your answers have been submitted and evaluated.")}
                     </p>
                     {nextWeeklyQuizAt && (
@@ -457,7 +503,7 @@ export default function StudentDashboard() {
                   </div>
                 )}
 
-                {weeklyQuiz && !quizResult && (
+                {weeklyQuiz && !resolvedQuizResult && (
                   <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
                     <div className="flex items-center justify-between gap-3">
                       <div>

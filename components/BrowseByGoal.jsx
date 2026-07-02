@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { motion } from "framer-motion";
+import { fadeUp, scaleIn, stagger, viewport } from "./ScrollMotion";
 
 const goals = [
   {
@@ -74,55 +78,84 @@ export default function BrowseByGoal() {
   return (
     <section className="bg-white py-24">
       <div className="mx-auto max-w-7xl px-6">
-        <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-end">
+        <motion.div
+          variants={stagger}
+          initial="hidden"
+          whileInView="show"
+          viewport={viewport}
+          className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-end"
+        >
           <div className="max-w-xl">
-            <span className="text-sm font-semibold uppercase tracking-wider text-emerald-600">
+            <motion.span
+              variants={fadeUp}
+              className="block text-sm font-semibold uppercase tracking-wider text-emerald-600"
+            >
               Browse by goal
-            </span>
-            <h2 className="mt-4 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-              Whatever you're studying for,{" "}
-              <span className="text-emerald-600">there's a tutor for it.</span>
-            </h2>
+            </motion.span>
+            <motion.h2
+              variants={fadeUp}
+              className="mt-4 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl"
+            >
+              Whatever you&apos;re studying for,{" "}
+              <span className="text-emerald-600">
+                there&apos;s a tutor for it.
+              </span>
+            </motion.h2>
           </div>
 
-          <Link
-            href="/tutors"
-            className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 hover:text-emerald-800"
-          >
-            View all tutors
-            <ArrowUpRight size={16} />
-          </Link>
-        </div>
-
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {goals.map((goal) => (
+          <motion.div variants={fadeUp}>
             <Link
-              key={goal.label}
-              href={`/tutors?subject=${encodeURIComponent(goal.subject)}`}
-              className={`group flex flex-col justify-between rounded-2xl border p-6 transition ${goal.color}`}
+              href="/tutors"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 hover:text-emerald-800"
             >
-              <div>
-                <h3 className={`text-base font-semibold ${goal.accent}`}>
-                  {goal.label}
-                </h3>
-                <p className="mt-2 text-sm leading-6 text-slate-500">
-                  {goal.description}
-                </p>
-              </div>
-
-              <div className="mt-6 flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-400">
-                  {goal.count}
-                </span>
-                <span
-                  className={`flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm transition group-hover:shadow-md ${goal.accent}`}
-                >
-                  <ArrowRight size={14} />
-                </span>
-              </div>
+              View all tutors
+              <ArrowUpRight size={16} />
             </Link>
+          </motion.div>
+        </motion.div>
+
+        <motion.div
+          variants={stagger}
+          initial="hidden"
+          whileInView="show"
+          viewport={viewport}
+          className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        >
+          {goals.map((goal, index) => (
+            <motion.div
+              key={goal.label}
+              variants={scaleIn}
+              whileHover={{ y: -6, transition: { duration: 0.2 } }}
+              custom={index}
+              className="h-full"
+            >
+              <Link
+                href={`/tutors?subject=${encodeURIComponent(goal.subject)}`}
+                className={`group flex h-full flex-col justify-between rounded-2xl border p-6 transition ${goal.color}`}
+              >
+                <div>
+                  <h3 className={`text-base font-semibold ${goal.accent}`}>
+                    {goal.label}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">
+                    {goal.description}
+                  </p>
+                </div>
+
+                <div className="mt-6 flex items-center justify-between">
+                  <span className="text-xs font-medium text-slate-400">
+                    {goal.count}
+                  </span>
+                  <span
+                    className={`flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm transition group-hover:shadow-md ${goal.accent}`}
+                  >
+                    <ArrowRight size={14} />
+                  </span>
+                </div>
+              </Link>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   );
